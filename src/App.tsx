@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { format } from 'date-fns';
 import { 
   Calendar as CalendarIcon, 
   LayoutGrid, 
@@ -16,28 +17,62 @@ import {
 } from 'lucide-react';
 import { useTasks } from './hooks/useTasks';
 import { useHabits } from './hooks/useHabits';
-import { ViewMode, Task, Habit } from './types';
+import { useObjectives } from './hooks/useObjectives';
+import { useDayClosure } from './hooks/useDayClosure';
+import { useGamification } from './hooks/useGamification';
+import { ViewMode, Task, Habit, Objective } from './types';
 import { cn } from './utils';
-import { shouldHabitOccurOnDate } from './utils/habitUtils';
+import { shouldHabitOccurOnDate, calculateObjectiveProgress } from './utils/habitUtils';
 import { ListView } from './components/ListView';
 import { CalendarView } from './components/CalendarView';
 import { TaskModal } from './components/TaskModal';
 import { HabitModal } from './components/HabitModal';
 import { HabitCard } from './components/HabitCard';
+import { ObjectiveModal } from './components/ObjectiveModal';
+import { ObjectiveCard } from './components/ObjectiveCard';
+import { CloseDayModal } from './components/CloseDayModal';
 import { AISuggestionModal } from './components/AISuggestionModal';
 
 export default function App() {
   const { tasks, addTask, updateTask, deleteTask, toggleTask } = useTasks();
-  const { habits, logs, addHabit, updateHabit, deleteHabit, toggleHabitLog } = useHabits();
+  const { habits, logs, addHabit, updateHabit, deleteHabit, toggleHabitLog: _toggleHabitLog } = useHabits();
+  const { objectives, addObjective, updateObjective, deleteObjective } = useObjectives();
+  const { closedDays, isDayClosed, closeDay } = useDayClosure();
+  const { stats, addExp } = useGamification();
+
+  const toggleHabitLog = (habitId: string, date: Date, value?: number, note?: string) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const existingLog = logs.find(l => l.habitId === habitId && l.date === dateStr);
+    
+    // Award EXP for first check-in or note
+    if (!existingLog) {
+      addExp(10, 'discipline');
+    } else if (note && !existingLog.note) {
+      addExp(8, 'consistency');
+    }
+
+    _toggleHabitLog(habitId, date, value, note);
+  };
   
   const [viewMode, setViewMode] = useState<ViewMode>('today');
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isHabitModalOpen, setIsHabitModalOpen] = useState(false);
+  const [isObjectiveModalOpen, setIsObjectiveModalOpen] = useState(false);
+  const [isCloseDayModalOpen, setIsCloseDayModalOpen] = useState(false);
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [taskToEdit, setTaskToEdit] = useState<Task | undefined>(undefined);
   const [habitToEdit, setHabitToEdit] = useState<Habit | undefined>(undefined);
+  const [objectiveToEdit, setObjectiveToEdit] = useState<Objective | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Calculate real-time progress for objectives
+  const objectivesWithProgress = useMemo(() => {
+    return objectives.map(obj => ({
+      ...obj,
+      currentValue: calculateObjectiveProgress(obj, habits, logs)
+    }));
+  }, [objectives, habits, logs]);
   
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -73,6 +108,11 @@ export default function App() {
     setIsHabitModalOpen(true);
   };
 
+  const handleEditObjective = (objective: Objective) => {
+    setObjectiveToEdit(objective);
+    setIsObjectiveModalOpen(true);
+  };
+
   const handleCloseTaskModal = () => {
     setIsTaskModalOpen(false);
     setTimeout(() => setTaskToEdit(undefined), 200);
@@ -83,17 +123,41 @@ export default function App() {
     setTimeout(() => setHabitToEdit(undefined), 200);
   };
 
+  const handleCloseObjectiveModal = () => {
+    setIsObjectiveModalOpen(false);
+    setTimeout(() => setObjectiveToEdit(undefined), 200);
+  };
+
+  const handleOpenCloseDayModal = () => {
+    setIsCloseDayModalOpen(true);
+  };
+
+  const handleConfirmCloseDay = async () => {
+    const result = await closeDay(new Date(), habits, logs, tasks, updateTask, addTask);
+    if (result) {
+      addExp(25, 'consistency');
+    }
+    return result;
+  };
+
   const handleSaveTask = (taskData: Omit<Task, 'id' | 'completed'>) => {
     if (taskToEdit) {
       updateTask(taskToEdit.id, taskData);
     } else if (taskData.type === 'habit') {
-      // If user captured a "habit" from the quick capture modal, 
-      // convert it to a simple yesno habit.
       addHabit({
         name: taskData.title,
         description: taskData.description,
         frequency: 'daily',
         type: 'yesno',
+        color: taskData.color,
+      });
+    } else if (taskData.type === 'objective') {
+      addObjective({
+        title: taskData.title,
+        description: taskData.description,
+        targetValue: 100,
+        currentValue: 0,
+        unit: '%',
         color: taskData.color,
       });
     } else {
@@ -109,6 +173,14 @@ export default function App() {
     }
   };
 
+  const handleSaveObjective = (objectiveData: Omit<Objective, 'id' | 'isActive' | 'createdAt'>) => {
+    if (objectiveToEdit) {
+      updateObjective(objectiveToEdit.id, objectiveData);
+    } else {
+      addObjective(objectiveData);
+    }
+  };
+
   const filteredTasks = tasks.filter(t => 
     t.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
     t.description?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -119,11 +191,17 @@ export default function App() {
     h.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const filteredObjectives = objectivesWithProgress.filter(o => 
+    o.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    o.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const todayHabits = habits.filter(h => h.isActive && shouldHabitOccurOnDate(h.frequency, new Date()));
 
   const navItems: { mode: ViewMode; label: string; icon: any }[] = [
     { mode: 'today', label: 'Hoy', icon: Zap },
     { mode: 'habits', label: 'Hábitos', icon: Repeat },
+    { mode: 'objectives', label: 'Objetivos', icon: Target },
     { mode: 'week', label: 'Semana', icon: LayoutGrid },
     { mode: 'month', label: 'Mes', icon: CalendarIcon },
     { mode: 'archive', label: 'Archivo', icon: ArchiveIcon },
@@ -189,13 +267,13 @@ export default function App() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
-                  setHabitToEdit(undefined);
-                  setIsHabitModalOpen(true);
+                  setObjectiveToEdit(undefined);
+                  setIsObjectiveModalOpen(true);
                 }}
                 className="p-2.5 text-text-muted hover:text-accent bg-bg-secondary dark:bg-[--dark-bg-secondary] rounded-[14px] border border-border-subtle dark:border-[--dark-border-subtle] transition-all"
-                title="Nuevo Hábito"
+                title="Nuevo Objetivo"
               >
-                <Repeat className="w-5 h-5" />
+                <Target className="w-5 h-5" />
               </button>
               <button
                 onClick={() => {
@@ -221,17 +299,51 @@ export default function App() {
             <div className="flex items-center gap-2 text-accent font-semibold uppercase tracking-widest text-xs">
               {viewMode === 'today' && <Zap className="w-3 h-3" />}
               {viewMode === 'habits' && <Repeat className="w-3 h-3" />}
+              {viewMode === 'objectives' && <Target className="w-3 h-3" />}
               {viewMode === 'week' && <LayoutGrid className="w-3 h-3" />}
               {viewMode === 'month' && <CalendarIcon className="w-3 h-3" />}
               {viewMode === 'today' ? 'Ejecución' : viewMode.toUpperCase()}
             </div>
             <h2 className="text-4xl font-bold capitalize">
-              {viewMode === 'today' ? 'Hoy' : viewMode === 'habits' ? 'Hábitos' : viewMode}
+              {viewMode === 'today' ? 'Hoy' : viewMode === 'habits' ? 'Hábitos' : viewMode === 'objectives' ? 'Objetivos' : viewMode}
             </h2>
             {viewMode === 'today' && (
-              <p className="text-text-muted dark:text-[--dark-text-muted]">
-                {filteredTasks.filter(t => !t.completed).length} ítems prioritarios para hoy.
-              </p>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-text-muted dark:text-[--dark-text-muted]">
+                    {filteredTasks.filter(t => !t.completed).length} ítems prioritarios para hoy.
+                  </p>
+                  <button 
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all",
+                      isDayClosed(new Date()) 
+                        ? "bg-green-500/10 text-green-500 cursor-default" 
+                        : "bg-accent/10 text-accent hover:bg-accent/20"
+                    )}
+                    onClick={isDayClosed(new Date()) ? undefined : handleOpenCloseDayModal}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {isDayClosed(new Date()) ? 'Día Cerrado' : 'Cerrar Día'}
+                  </button>
+                </div>
+
+                {isDayClosed(new Date()) && (
+                  <div className="p-6 bg-accent/5 border border-accent/10 rounded-[24px] relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-4 opacity-5">
+                      <Sparkles className="w-12 h-12 text-accent" />
+                    </div>
+                    <div className="relative z-10">
+                      <p className="text-xs font-bold text-accent uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <Sparkles className="w-3 h-3" />
+                        Resumen IA de hoy
+                      </p>
+                      <p className="text-sm font-medium italic text-text-primary dark:text-[--dark-text-primary]">
+                        "{closedDays.find(d => d.date === format(new Date(), 'yyyy-MM-dd'))?.summary}"
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
@@ -247,11 +359,27 @@ export default function App() {
                       logs={logs} 
                       onToggle={(id) => toggleHabitLog(id, new Date())}
                       onEdit={handleEditHabit}
+                      onAddNote={(id, note) => toggleHabitLog(id, new Date(), undefined, note)}
                     />
                   ))}
                   {filteredHabits.length === 0 && (
                     <div className="col-span-full py-20 text-center iterum-card border-dashed">
                       <p className="text-text-muted">No hay hábitos activos. Crea uno para empezar.</p>
+                    </div>
+                  )}
+                </div>
+              ) : viewMode === 'objectives' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {filteredObjectives.map(objective => (
+                    <ObjectiveCard 
+                      key={objective.id} 
+                      objective={objective} 
+                      onEdit={handleEditObjective}
+                    />
+                  ))}
+                  {filteredObjectives.length === 0 && (
+                    <div className="col-span-full py-20 text-center iterum-card border-dashed">
+                      <p className="text-text-muted">No hay objetivos activos. Define uno para empezar.</p>
                     </div>
                   )}
                 </div>
@@ -271,6 +399,7 @@ export default function App() {
                             logs={logs} 
                             onToggle={(id) => toggleHabitLog(id, new Date())}
                             onEdit={handleEditHabit}
+                            onAddNote={(id, note) => toggleHabitLog(id, new Date(), undefined, note)}
                             compact
                           />
                         ))}
@@ -297,24 +426,70 @@ export default function App() {
 
             {/* Sidebar - Contextual Info */}
             <aside className="lg:col-span-4 space-y-8">
+              <section className="iterum-card bg-accent/5 border-accent/20">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-12 h-12 bg-accent rounded-[16px] flex items-center justify-center text-bg-primary font-bold text-xl shadow-lg shadow-accent/20">
+                    {stats.level}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-end mb-1">
+                      <span className="text-[10px] font-bold text-accent uppercase tracking-widest">Nivel {stats.level}</span>
+                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{stats.totalExp % 100} / 100 EXP</span>
+                    </div>
+                    <div className="h-2 bg-bg-primary dark:bg-[--dark-bg-primary] rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-accent transition-all duration-500" 
+                        style={{ width: `${(stats.totalExp % 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="text-center p-2 bg-bg-primary/50 dark:bg-black/20 rounded-[12px]">
+                    <p className="text-[8px] font-bold text-text-muted uppercase tracking-tighter">Disciplina</p>
+                    <p className="text-xs font-bold text-accent">Lvl {stats.discipline.level}</p>
+                  </div>
+                  <div className="text-center p-2 bg-bg-primary/50 dark:bg-black/20 rounded-[12px]">
+                    <p className="text-[8px] font-bold text-text-muted uppercase tracking-tighter">Consistencia</p>
+                    <p className="text-xs font-bold text-accent">Lvl {stats.consistency.level}</p>
+                  </div>
+                </div>
+              </section>
+
               <section className="iterum-card">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="font-bold flex items-center gap-2">
                     <Target className="w-5 h-5 text-accent-secondary" />
                     Objetivos
                   </h3>
-                  <ChevronRight className="w-4 h-4 text-text-muted" />
+                  <button 
+                    onClick={() => setViewMode('objectives')}
+                    className="p-1 text-text-muted hover:text-accent transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="font-medium">Proyecto Iterum</span>
-                      <span className="text-accent">65%</span>
-                    </div>
-                    <div className="h-2 bg-bg-primary dark:bg-[--dark-bg-primary] rounded-full overflow-hidden">
-                      <div className="h-full bg-accent w-[65%] rounded-full" />
-                    </div>
-                  </div>
+                  {objectivesWithProgress.slice(0, 3).map(obj => {
+                    const progress = Math.min(100, Math.round((obj.currentValue / obj.targetValue) * 100));
+                    return (
+                      <div key={obj.id} className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="font-medium truncate max-w-[150px]">{obj.title}</span>
+                          <span className="text-accent">{progress}%</span>
+                        </div>
+                        <div className="h-2 bg-bg-primary dark:bg-[--dark-bg-primary] rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-accent rounded-full transition-all duration-500" 
+                            style={{ width: `${progress}%`, backgroundColor: obj.color }} 
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {objectives.length === 0 && (
+                    <p className="text-xs text-text-muted italic text-center py-4">Sin objetivos activos</p>
+                  )}
                 </div>
               </section>
 
@@ -349,6 +524,24 @@ export default function App() {
         onClose={handleCloseHabitModal}
         onSave={handleSaveHabit}
         habitToEdit={habitToEdit}
+        objectives={objectives}
+      />
+
+      <ObjectiveModal
+        isOpen={isObjectiveModalOpen}
+        onClose={handleCloseObjectiveModal}
+        onSave={handleSaveObjective}
+        objectiveToEdit={objectiveToEdit}
+        habits={habits}
+      />
+
+      <CloseDayModal
+        isOpen={isCloseDayModalOpen}
+        onClose={() => setIsCloseDayModalOpen(false)}
+        onConfirm={handleConfirmCloseDay}
+        tasks={tasks}
+        habits={habits}
+        logs={logs}
       />
       
       <AISuggestionModal

@@ -1,21 +1,40 @@
-import { CheckCircle2, Flame, Target, Edit2, MoreVertical } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { CheckCircle2, Flame, Target, Edit2, MoreVertical, MessageSquare, Save } from 'lucide-react';
 import { Habit, HabitLog } from '../types';
 import { cn } from '../utils';
 import { calculateCurrentStreak } from '../utils/habitUtils';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface HabitCardProps {
   habit: Habit;
   logs: HabitLog[];
   onToggle: (id: string) => void;
   onEdit: (habit: Habit) => void;
+  onAddNote?: (id: string, note: string) => void;
   compact?: boolean;
 }
 
-export function HabitCard({ habit, logs, onToggle, onEdit, compact = false }: HabitCardProps) {
+export const HabitCard: React.FC<HabitCardProps> = ({ habit, logs, onToggle, onEdit, onAddNote, compact = false }) => {
+  const [isReflecting, setIsReflecting] = useState(false);
+  const [note, setNote] = useState('');
+  
   const streak = calculateCurrentStreak(logs, habit);
   const todayStr = new Date().toISOString().split('T')[0];
-  const isCompletedToday = logs.some(l => l.habitId === habit.id && l.date === todayStr && l.completed);
+  const currentLog = logs.find(l => l.habitId === habit.id && l.date === todayStr);
+  const isCompletedToday = currentLog?.completed || false;
+
+  const handleSaveNote = () => {
+    if (onAddNote) {
+      onAddNote(habit.id, note);
+      setIsReflecting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentLog?.note) {
+      setNote(currentLog.note);
+    }
+  }, [currentLog]);
 
   if (compact) {
     return (
@@ -43,6 +62,17 @@ export function HabitCard({ habit, logs, onToggle, onEdit, compact = false }: Ha
             </div>
           </div>
         </div>
+        {isCompletedToday && onAddNote && (
+          <button 
+            onClick={() => setIsReflecting(!isReflecting)}
+            className={cn(
+              "p-2 rounded-full transition-colors",
+              currentLog?.note ? "text-accent bg-accent/10" : "text-text-muted hover:text-accent"
+            )}
+          >
+            <MessageSquare className="w-4 h-4" />
+          </button>
+        )}
       </div>
     );
   }
@@ -68,6 +98,17 @@ export function HabitCard({ habit, logs, onToggle, onEdit, compact = false }: Ha
         </div>
         
         <div className="flex items-center gap-2">
+          {isCompletedToday && (
+            <button 
+              onClick={() => setIsReflecting(!isReflecting)}
+              className={cn(
+                "p-2 rounded-full transition-all",
+                currentLog?.note ? "text-accent bg-accent/10" : "text-text-muted hover:text-accent opacity-0 group-hover:opacity-100"
+              )}
+            >
+              <MessageSquare className="w-4 h-4" />
+            </button>
+          )}
           <button 
             onClick={() => onEdit(habit)}
             className="p-2 text-text-muted hover:text-accent opacity-0 group-hover:opacity-100 transition-all"
@@ -79,6 +120,33 @@ export function HabitCard({ habit, logs, onToggle, onEdit, compact = false }: Ha
           </button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {isReflecting && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="flex gap-2 items-end pt-2">
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="¿Cómo te sentiste hoy con este hábito?"
+                className="flex-1 iterum-input py-2 text-sm resize-none h-20"
+                autoFocus
+              />
+              <button 
+                onClick={handleSaveNote}
+                className="p-3 bg-accent text-bg-primary rounded-[12px] hover:opacity-90 transition-all"
+              >
+                <Save className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex items-end justify-between mt-2">
         <div className="flex items-center gap-3">
@@ -124,4 +192,4 @@ export function HabitCard({ habit, logs, onToggle, onEdit, compact = false }: Ha
       )}
     </motion.div>
   );
-}
+};

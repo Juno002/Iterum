@@ -14,6 +14,7 @@ export type Habit = {
   color?: string;
   reminderTime?: string; // HH:mm
   isActive: boolean;
+  objectiveIds?: string[]; // Link to objectives
   createdAt: Date;
   archivedAt?: Date;
 };
@@ -28,6 +29,19 @@ export type HabitLog = {
   createdAt: Date;
 };
 
+export type Objective = {
+  id: string;
+  title: string;
+  description?: string;
+  targetValue: number; // e.g. 100% or 1000km
+  currentValue: number;
+  unit: string; // e.g. "%", "km", "sesiones"
+  deadline?: Date;
+  color?: string;
+  isActive: boolean;
+  createdAt: Date;
+};
+
 export type Task = {
   id: string;
   type: EntityType;
@@ -36,13 +50,23 @@ export type Task = {
   date: Date;
   completed: boolean;
   color?: string;
-  // Objective specific
-  targetValue?: number;
-  currentValue?: number;
-  deadline?: Date;
+  migrated?: boolean;
   // Journal specific
   content?: string;
   tags?: string[];
 };
 
-export type ViewMode = 'today' | 'week' | 'month' | 'archive' | 'habits';
+export type ViewMode = 'today' | 'week' | 'month' | 'archive' | 'habits' | 'objectives';
+
+export type DayClosure = {
+  date: string; // YYYY-MM-DD
+  summary: string;
+  closedAt: Date;
+};
+
+export type UserStats = {
+  discipline: { exp: number; level: number };
+  consistency: { exp: number; level: number };
+  totalExp: number;
+  level: number;
+};

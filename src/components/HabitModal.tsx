@@ -1,6 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { X, Zap, Repeat, Target, Clock, BookOpen } from 'lucide-react';
-import { Habit, HabitType } from '../types';
+import { Habit, HabitType, Objective } from '../types';
 import { cn } from '../utils';
 
 interface HabitModalProps {
@@ -8,6 +8,7 @@ interface HabitModalProps {
   onClose: () => void;
   onSave: (habit: Omit<Habit, 'id' | 'isActive' | 'createdAt'>) => void;
   habitToEdit?: Habit;
+  objectives: Objective[];
 }
 
 const COLORS = [
@@ -33,7 +34,7 @@ const FREQUENCIES = [
   { value: 'everyXdays:2', label: 'Cada 2 días' },
 ];
 
-export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalProps) {
+export function HabitModal({ isOpen, onClose, onSave, habitToEdit, objectives }: HabitModalProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [frequency, setFrequency] = useState('daily');
@@ -43,6 +44,7 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalP
   const [category, setCategory] = useState('');
   const [color, setColor] = useState(COLORS[0]);
   const [reminderTime, setReminderTime] = useState('');
+  const [selectedObjectiveIds, setSelectedObjectiveIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (isOpen) {
@@ -56,6 +58,7 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalP
         setCategory(habitToEdit.category || '');
         setColor(habitToEdit.color || COLORS[0]);
         setReminderTime(habitToEdit.reminderTime || '');
+        setSelectedObjectiveIds(habitToEdit.objectiveIds || []);
       } else {
         setName('');
         setDescription('');
@@ -66,6 +69,7 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalP
         setCategory('');
         setColor(COLORS[0]);
         setReminderTime('');
+        setSelectedObjectiveIds([]);
       }
     }
   }, [isOpen, habitToEdit]);
@@ -86,8 +90,15 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalP
       category: category.trim(),
       color,
       reminderTime: reminderTime || undefined,
+      objectiveIds: selectedObjectiveIds.length > 0 ? selectedObjectiveIds : undefined,
     });
     onClose();
+  };
+
+  const toggleObjective = (id: string) => {
+    setSelectedObjectiveIds(prev => 
+      prev.includes(id) ? prev.filter(oid => oid !== id) : [...prev, id]
+    );
   };
 
   return (
@@ -191,6 +202,31 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalP
               ))}
             </select>
           </div>
+
+          {objectives.length > 0 && (
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-3">
+                Contribuye a Objetivos
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {objectives.map((obj) => (
+                  <button
+                    key={obj.id}
+                    type="button"
+                    onClick={() => toggleObjective(obj.id)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-all",
+                      selectedObjectiveIds.includes(obj.id)
+                        ? "bg-accent/10 border-accent text-accent"
+                        : "bg-bg-secondary border-border-subtle text-text-muted"
+                    )}
+                  >
+                    {obj.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
