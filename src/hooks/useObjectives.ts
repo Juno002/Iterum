@@ -44,5 +44,5 @@ export function useObjectives() {
     setObjectives((prev) => prev.filter((o) => o.id !== id));
   };
 
-  return { objectives, addObjective, updateObjective, deleteObjective };
+  return { objectives, addObjective, updateObjective, deleteObjective, setObjectives };
 }

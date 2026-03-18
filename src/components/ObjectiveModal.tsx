@@ -1,8 +1,9 @@
 import { useState, useEffect, FormEvent } from 'react';
-import { X, Target, Zap } from 'lucide-react';
+import { X, Target, Zap, Plus, Trash2, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { Objective, Habit } from '../types';
+import { Objective, Habit, Milestone } from '../types';
 import { cn } from '../utils';
+import { v4 as uuidv4 } from 'uuid';
 
 interface ObjectiveModalProps {
   isOpen: boolean;
@@ -29,8 +30,14 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit, habit
   const [unit, setUnit] = useState('%');
   const [deadline, setDeadline] = useState('');
   const [color, setColor] = useState(COLORS[0]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [newMilestoneTitle, setNewMilestoneTitle] = useState('');
+  const [linkedHabitId, setLinkedHabitId] = useState<string | undefined>(undefined);
 
-  const linkedHabits = habits.filter(h => objectiveToEdit && h.objectiveIds?.includes(objectiveToEdit.id));
+  const linkedHabits = habits.filter(h => 
+    (objectiveToEdit && h.objectiveIds?.includes(objectiveToEdit.id)) ||
+    (h.id === linkedHabitId)
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -42,6 +49,8 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit, habit
         setUnit(objectiveToEdit.unit);
         setDeadline(objectiveToEdit.deadline ? format(objectiveToEdit.deadline, 'yyyy-MM-dd') : '');
         setColor(objectiveToEdit.color || COLORS[0]);
+        setMilestones(objectiveToEdit.milestones || []);
+        setLinkedHabitId(objectiveToEdit.linkedHabitId);
       } else {
         setTitle('');
         setDescription('');
@@ -50,11 +59,34 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit, habit
         setUnit('%');
         setDeadline('');
         setColor(COLORS[0]);
+        setMilestones([]);
+        setLinkedHabitId(undefined);
       }
     }
   }, [isOpen, objectiveToEdit]);
 
   if (!isOpen) return null;
+
+  const addMilestone = () => {
+    if (!newMilestoneTitle.trim()) return;
+    const newMilestone: Milestone = {
+      id: uuidv4(),
+      title: newMilestoneTitle.trim(),
+      completed: false,
+    };
+    setMilestones([...milestones, newMilestone]);
+    setNewMilestoneTitle('');
+  };
+
+  const removeMilestone = (id: string) => {
+    setMilestones(milestones.filter(m => m.id !== id));
+  };
+
+  const toggleMilestone = (id: string) => {
+    setMilestones(milestones.map(m => 
+      m.id === id ? { ...m, completed: !m.completed, completedAt: !m.completed ? new Date() : undefined } : m
+    ));
+  };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -68,6 +100,8 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit, habit
       unit,
       deadline: deadline ? new Date(deadline) : undefined,
       color,
+      milestones,
+      linkedHabitId,
     });
     onClose();
   };
@@ -151,6 +185,23 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit, habit
             />
           </div>
 
+          <div>
+            <label htmlFor="linkedHabit" className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
+              Vincular Hábito (Progreso Automático)
+            </label>
+            <select
+              id="linkedHabit"
+              value={linkedHabitId || ''}
+              onChange={(e) => setLinkedHabitId(e.target.value || undefined)}
+              className="iterum-input w-full appearance-none bg-bg-secondary dark:bg-[--dark-bg-secondary]"
+            >
+              <option value="">Ninguno (Progreso Manual)</option>
+              {habits.map(h => (
+                <option key={h.id} value={h.id}>{h.name} ({h.type === 'numeric' ? 'Suma valores' : 'Cuenta check-ins'})</option>
+              ))}
+            </select>
+          </div>
+
           {objectiveToEdit && linkedHabits.length > 0 && (
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-3">
@@ -171,6 +222,58 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit, habit
               </div>
             </div>
           )}
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-3">
+              Hitos (Milestones)
+            </label>
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newMilestoneTitle}
+                  onChange={(e) => setNewMilestoneTitle(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addMilestone())}
+                  className="iterum-input flex-1"
+                  placeholder="Nuevo hito..."
+                />
+                <button
+                  type="button"
+                  onClick={addMilestone}
+                  className="p-3 bg-accent/10 text-accent rounded-[14px] hover:bg-accent/20 transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-2">
+                {milestones.map((m) => (
+                  <div key={m.id} className="flex items-center gap-3 p-3 bg-bg-secondary dark:bg-[--dark-bg-secondary] rounded-[14px] border border-border-subtle dark:border-[--dark-border-subtle] group">
+                    <button
+                      type="button"
+                      onClick={() => toggleMilestone(m.id)}
+                      className={cn(
+                        "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
+                        m.completed ? "bg-accent border-accent text-bg-primary" : "border-text-muted/30"
+                      )}
+                    >
+                      {m.completed && <CheckCircle2 className="w-3 h-3" />}
+                    </button>
+                    <span className={cn("flex-1 text-sm font-medium", m.completed && "line-through text-text-muted")}>
+                      {m.title}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeMilestone(m.id)}
+                      className="p-1.5 text-text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
 
           <div>
             <label htmlFor="description" className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">

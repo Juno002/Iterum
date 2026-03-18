@@ -1,10 +1,15 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { Task } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 export async function suggestTasks(prompt: string): Promise<Omit<Task, 'id' | 'completed'>[]> {
   try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn('No API key found for Gemini Service');
+      return [];
+    }
+    const ai = new GoogleGenAI({ apiKey });
+
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Actúa como el Asistente Contextual de Iterum, un ecosistema de productividad minimalista y profesional.
@@ -48,8 +53,23 @@ Devuelve un JSON con un array de objetos, cada uno con:
       color: item.color,
       type: item.type,
     }));
-  } catch (error) {
-    console.error('Error generating tasks:', error);
+  } catch (error: any) {
+    // Fallback for network/adblocker errors
+    const errorStr = String(error?.message || error);
+    if (errorStr.includes('xhr error') || errorStr.includes('fetch')) {
+      console.warn('Gemini Service network error (fallback applied):', errorStr);
+      return [
+        {
+          title: "Revisar objetivos",
+          description: "Sugerencia automática por error de conexión.",
+          date: new Date(),
+          color: "#C9935A",
+          type: "task" as any
+        }
+      ];
+    } else {
+      console.error('Error generating tasks:', error);
+    }
     return [];
   }
 }

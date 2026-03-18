@@ -49,5 +49,5 @@ export function useTasks() {
     );
   };
 
-  return { tasks, addTask, updateTask, deleteTask, toggleTask };
+  return { tasks, addTask, updateTask, deleteTask, toggleTask, setTasks };
 }

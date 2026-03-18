@@ -3,7 +3,11 @@ import { UserStats } from '../types';
 
 const EXP_PER_LEVEL = 100;
 
-export function useGamification() {
+interface UseGamificationProps {
+  onLevelUp?: (level: number) => void;
+}
+
+export function useGamification({ onLevelUp }: UseGamificationProps = {}) {
   const [stats, setStats] = useState<UserStats>(() => {
     const saved = localStorage.getItem('iterum_user_stats');
     if (saved) {
@@ -18,6 +22,7 @@ export function useGamification() {
       consistency: { exp: 0, level: 1 },
       totalExp: 0,
       level: 1,
+      onboardingCompleted: false,
     };
   });
 
@@ -30,9 +35,17 @@ export function useGamification() {
       const newTotalExp = prev.totalExp + amount;
       const newLevel = Math.floor(newTotalExp / EXP_PER_LEVEL) + 1;
       
-      const categoryStats = prev[type];
+      const categoryStats = prev[type as keyof Pick<UserStats, 'discipline' | 'consistency'>];
       const newCategoryExp = categoryStats.exp + amount;
       const newCategoryLevel = Math.floor(newCategoryExp / EXP_PER_LEVEL) + 1;
+
+      if (newLevel > prev.level) {
+        // Level up logic
+        if (onLevelUp) {
+          onLevelUp(newLevel);
+        }
+        console.log(`Level Up! You are now level ${newLevel}`);
+      }
 
       return {
         ...prev,
@@ -46,5 +59,9 @@ export function useGamification() {
     });
   };
 
-  return { stats, addExp };
+  const completeOnboarding = () => {
+    setStats(prev => ({ ...prev, onboardingCompleted: true }));
+  };
+
+  return { stats, addExp, completeOnboarding, setStats };
 }

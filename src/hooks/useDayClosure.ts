@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DayClosure, Task, Habit, HabitLog } from '../types';
+import { DayClosure, Task, Habit, HabitLog, WeeklyInsight } from '../types';
 import { GoogleGenAI } from "@google/genai";
 import { format, addDays, isSameDay } from 'date-fns';
 
@@ -12,9 +12,27 @@ export function useDayClosure() {
         return parsed.map((d: any) => ({
           ...d,
           closedAt: new Date(d.closedAt),
+          insight: d.insight ? { ...d.insight, generatedAt: d.insight.generatedAt ? new Date(d.insight.generatedAt) : undefined } : undefined
         }));
       } catch (e) {
         console.error('Failed to parse closed days', e);
+        return [];
+      }
+    }
+    return [];
+  });
+
+  const [weeklyInsights, setWeeklyInsights] = useState<WeeklyInsight[]>(() => {
+    const saved = localStorage.getItem('iterum_weekly_insights');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.map((i: any) => ({
+          ...i,
+          generatedAt: new Date(i.generatedAt)
+        }));
+      } catch (e) {
+        console.error('Failed to parse weekly insights', e);
         return [];
       }
     }
@@ -25,9 +43,29 @@ export function useDayClosure() {
     localStorage.setItem('iterum_closed_days', JSON.stringify(closedDays));
   }, [closedDays]);
 
+  useEffect(() => {
+    localStorage.setItem('iterum_weekly_insights', JSON.stringify(weeklyInsights));
+  }, [weeklyInsights]);
+
   const isDayClosed = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
     return closedDays.some(d => d.date === dateStr);
+  };
+
+  const calculateStreak = () => {
+    let streak = 0;
+    let current = new Date();
+    
+    // Check if today is closed or yesterday was closed to continue streak
+    if (!isDayClosed(current)) {
+      current = addDays(current, -1);
+    }
+
+    while (isDayClosed(current)) {
+      streak++;
+      current = addDays(current, -1);
+    }
+    return streak;
   };
 
   const generateAISummary = async (habits: Habit[], logs: HabitLog[], tasks: Task[]) => {
@@ -63,8 +101,14 @@ export function useDayClosure() {
         contents: prompt,
       });
       return response.text || "Día completado. ¡Sigue así!";
-    } catch (e) {
-      console.error('AI Summary failed', e);
+    } catch (e: any) {
+      const errorStr = String(e?.message || e);
+      if (errorStr.includes('xhr error') || errorStr.includes('fetch')) {
+        console.warn('AI Summary network error (fallback applied):', errorStr);
+        return "Día completado. (Resumen automático por error de conexión)";
+      } else {
+        console.error('AI Summary failed', e);
+      }
       return "Día completado. No se pudo generar el resumen inteligente.";
     }
   };
@@ -110,5 +154,19 @@ export function useDayClosure() {
     return newClosure;
   };
 
-  return { closedDays, isDayClosed, closeDay };
+  const addWeeklyInsight = (insight: WeeklyInsight) => {
+    const newInsight = { ...insight, generatedAt: new Date() };
+    setWeeklyInsights(prev => [newInsight, ...prev]);
+  };
+
+  return { 
+    closedDays, 
+    isDayClosed, 
+    closeDay, 
+    calculateStreak, 
+    setClosedDays, 
+    weeklyInsights, 
+    addWeeklyInsight,
+    setWeeklyInsights 
+  };
 }

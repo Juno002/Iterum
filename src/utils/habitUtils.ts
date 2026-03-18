@@ -68,7 +68,12 @@ export function calculateCurrentStreak(logs: HabitLog[], habit: Habit): number {
 }
 
 export function calculateObjectiveProgress(objective: Objective, habits: Habit[], logs: HabitLog[]): number {
-  const linkedHabits = habits.filter(h => h.objectiveIds?.includes(objective.id));
+  // Find habits linked via habit.objectiveIds OR objective.linkedHabitId
+  const linkedHabits = habits.filter(h => 
+    h.objectiveIds?.includes(objective.id) || 
+    h.id === objective.linkedHabitId
+  );
+  
   let totalProgress = 0;
 
   linkedHabits.forEach(habit => {

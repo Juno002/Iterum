@@ -100,5 +100,5 @@ export function useHabits() {
     }
   };
 
-  return { habits, logs, addHabit, updateHabit, deleteHabit, toggleHabitLog };
+  return { habits, logs, addHabit, updateHabit, deleteHabit, toggleHabitLog, setHabits, setLogs };
 }

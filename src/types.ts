@@ -29,6 +29,13 @@ export type HabitLog = {
   createdAt: Date;
 };
 
+export type Milestone = {
+  id: string;
+  title: string;
+  completed: boolean;
+  completedAt?: Date;
+};
+
 export type Objective = {
   id: string;
   title: string;
@@ -40,6 +47,8 @@ export type Objective = {
   color?: string;
   isActive: boolean;
   createdAt: Date;
+  milestones?: Milestone[];
+  linkedHabitId?: string;
 };
 
 export type Task = {
@@ -56,12 +65,26 @@ export type Task = {
   tags?: string[];
 };
 
-export type ViewMode = 'today' | 'week' | 'month' | 'archive' | 'habits' | 'objectives';
+export type ViewMode = 'today' | 'week' | 'month' | 'archive' | 'habits' | 'objectives' | 'journal';
+
+export type WeeklyInsight = {
+  summary: string;
+  patterns: string[];
+  tips: string[];
+  weeklyWisdom: string;
+  stats: {
+    completionRate: number;
+    mostConsistentHabit: string;
+    leastConsistentHabit: string;
+  };
+  generatedAt?: Date;
+};
 
 export type DayClosure = {
   date: string; // YYYY-MM-DD
   summary: string;
   closedAt: Date;
+  insight?: WeeklyInsight; // Store the weekly insight if generated this day
 };
 
 export type UserStats = {
@@ -69,4 +92,5 @@ export type UserStats = {
   consistency: { exp: number; level: number };
   totalExp: number;
   level: number;
+  onboardingCompleted: boolean;
 };

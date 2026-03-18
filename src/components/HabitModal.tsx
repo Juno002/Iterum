@@ -1,7 +1,8 @@
 import { useState, useEffect, FormEvent } from 'react';
-import { X, Zap, Repeat, Target, Clock, BookOpen } from 'lucide-react';
+import { X, Zap, Repeat, Target, Clock, BookOpen, Sparkles } from 'lucide-react';
 import { Habit, HabitType, Objective } from '../types';
 import { cn } from '../utils';
+import { GoogleGenAI } from "@google/genai";
 
 interface HabitModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface HabitModalProps {
   onSave: (habit: Omit<Habit, 'id' | 'isActive' | 'createdAt'>) => void;
   habitToEdit?: Habit;
   objectives: Objective[];
+  userLevel: number;
 }
 
 const COLORS = [
@@ -34,7 +36,7 @@ const FREQUENCIES = [
   { value: 'everyXdays:2', label: 'Cada 2 días' },
 ];
 
-export function HabitModal({ isOpen, onClose, onSave, habitToEdit, objectives }: HabitModalProps) {
+export function HabitModal({ isOpen, onClose, onSave, habitToEdit, objectives, userLevel }: HabitModalProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [frequency, setFrequency] = useState('daily');
@@ -45,6 +47,43 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit, objectives }:
   const [color, setColor] = useState(COLORS[0]);
   const [reminderTime, setReminderTime] = useState('');
   const [selectedObjectiveIds, setSelectedObjectiveIds] = useState<string[]>([]);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+
+  const suggestWithAI = async () => {
+    if (!name.trim()) return;
+    setIsSuggesting(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Sugiere configuración para un hábito llamado "${name}". 
+        Responde SOLO en JSON con este formato: 
+        { "frequency": "daily" | "weekly:Mon,Wed,Fri" | "everyXdays:2", "category": "string", "description": "string", "type": "yesno" | "numeric" | "timer", "unit": "string", "targetValue": number }`,
+        config: { responseMimeType: "application/json" }
+      });
+
+      const suggestion = JSON.parse(response.text || '{}');
+      if (suggestion.frequency) setFrequency(suggestion.frequency);
+      if (suggestion.category) setCategory(suggestion.category);
+      if (suggestion.description) setDescription(suggestion.description);
+      if (suggestion.type) setType(suggestion.type);
+      if (suggestion.unit) setUnit(suggestion.unit);
+      if (suggestion.targetValue) setTargetValue(suggestion.targetValue);
+    } catch (error: any) {
+      // Fallback for network/adblocker errors
+      const errorStr = String(error?.message || error);
+      if (errorStr.includes('xhr error') || errorStr.includes('fetch')) {
+        console.warn('AI Suggestion network error (fallback applied):', errorStr);
+        setFrequency('daily');
+        setType('yesno');
+        setDescription('Un buen hábito para empezar.');
+      } else {
+        console.error('AI Suggestion failed', error);
+      }
+    } finally {
+      setIsSuggesting(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -121,9 +160,25 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit, objectives }:
 
         <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
           <div>
-            <label htmlFor="name" className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
-              Nombre del Hábito
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor="name" className="block text-xs font-bold uppercase tracking-widest text-text-muted">
+                Nombre del Hábito
+              </label>
+              {name.trim() && !habitToEdit && (
+                <button
+                  type="button"
+                  onClick={suggestWithAI}
+                  disabled={isSuggesting}
+                  className={cn(
+                    "text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 transition-all",
+                    isSuggesting ? "text-accent animate-pulse" : "text-accent/60 hover:text-accent"
+                  )}
+                >
+                  <Sparkles className="w-3 h-3" />
+                  {isSuggesting ? 'Sugiriendo...' : 'Sugerir con IA'}
+                </button>
+              )}
+            </div>
             <input
               id="name"
               type="text"
@@ -257,22 +312,41 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit, objectives }:
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-3">
-              Color Distintivo
-            </label>
+            <div className="flex items-center justify-between mb-3">
+              <label className="block text-xs font-bold uppercase tracking-widest text-text-muted">
+                Color Distintivo
+              </label>
+              {userLevel < 2 && (
+                <span className="text-[10px] font-bold text-accent uppercase tracking-widest flex items-center gap-1">
+                  <Zap className="w-3 h-3" />
+                  Nivel 2 Desbloquea más
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-3">
-              {COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
-                  className={cn(
-                    "w-7 h-7 rounded-full transition-all border-2",
-                    color === c ? "scale-125 border-text-primary shadow-lg" : "border-transparent hover:scale-110"
-                  )}
-                  style={{ backgroundColor: c }}
-                />
-              ))}
+              {COLORS.map((c, idx) => {
+                const isLocked = userLevel < 2 && idx > 1;
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    disabled={isLocked}
+                    onClick={() => setColor(c)}
+                    className={cn(
+                      "w-7 h-7 rounded-full transition-all border-2 relative",
+                      color === c ? "scale-125 border-text-primary shadow-lg" : "border-transparent hover:scale-110",
+                      isLocked && "opacity-20 cursor-not-allowed grayscale"
+                    )}
+                    style={{ backgroundColor: c }}
+                  >
+                    {isLocked && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Zap className="w-3 h-3 text-text-primary" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

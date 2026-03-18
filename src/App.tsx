@@ -13,18 +13,21 @@ import {
   BookOpen,
   Archive as ArchiveIcon,
   ChevronRight,
-  Repeat
+  Repeat,
+  Flame
 } from 'lucide-react';
 import { useTasks } from './hooks/useTasks';
 import { useHabits } from './hooks/useHabits';
 import { useObjectives } from './hooks/useObjectives';
 import { useDayClosure } from './hooks/useDayClosure';
 import { useGamification } from './hooks/useGamification';
-import { ViewMode, Task, Habit, Objective } from './types';
+import { ViewMode, Task, Habit, Objective, WeeklyInsight } from './types';
 import { cn } from './utils';
 import { shouldHabitOccurOnDate, calculateObjectiveProgress } from './utils/habitUtils';
 import { ListView } from './components/ListView';
 import { CalendarView } from './components/CalendarView';
+import { WeekView } from './components/WeekView';
+import { JournalView } from './components/JournalView';
 import { TaskModal } from './components/TaskModal';
 import { HabitModal } from './components/HabitModal';
 import { HabitCard } from './components/HabitCard';
@@ -32,13 +35,229 @@ import { ObjectiveModal } from './components/ObjectiveModal';
 import { ObjectiveCard } from './components/ObjectiveCard';
 import { CloseDayModal } from './components/CloseDayModal';
 import { AISuggestionModal } from './components/AISuggestionModal';
+import { OnboardingWizard } from './components/OnboardingWizard';
+import { Toast } from './components/Toast';
+import confetti from 'canvas-confetti';
+import { soundManager } from './utils/sounds';
+
+import { WeeklyReviewModal } from './components/WeeklyReviewModal';
+import { WeeklyInsightService } from './services/WeeklyInsightService';
+import { AIInsightBanner } from './components/AIInsightBanner';
+import { es } from 'date-fns/locale';
+import { subDays } from 'date-fns';
+import { SyncService } from './services/supabase';
 
 export default function App() {
-  const { tasks, addTask, updateTask, deleteTask, toggleTask } = useTasks();
-  const { habits, logs, addHabit, updateHabit, deleteHabit, toggleHabitLog: _toggleHabitLog } = useHabits();
-  const { objectives, addObjective, updateObjective, deleteObjective } = useObjectives();
-  const { closedDays, isDayClosed, closeDay } = useDayClosure();
-  const { stats, addExp } = useGamification();
+  const [toast, setToast] = useState<{ isOpen: boolean; title: string; message: string }>({
+    isOpen: false,
+    title: '',
+    message: ''
+  });
+
+  const [weeklyInsight, setWeeklyInsight] = useState<WeeklyInsight | null>(null);
+  const [isWeeklyReviewOpen, setIsWeeklyReviewOpen] = useState(false);
+  const [isGeneratingInsight, setIsGeneratingInsight] = useState(false);
+
+  const handleLevelUp = (level: number) => {
+    soundManager.playSuccess();
+    confetti({
+      particleCount: 150,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#F27D26', '#E6E6E6', '#141414']
+    });
+    setToast({
+      isOpen: true,
+      title: '¡Nivel Completado!',
+      message: `Has alcanzado el Nivel ${level}. Sigue así, Junior.`
+    });
+  };
+
+  const { tasks, addTask, updateTask, deleteTask, toggleTask, setTasks } = useTasks();
+  const { habits, logs, addHabit, updateHabit, deleteHabit, toggleHabitLog: _toggleHabitLog, setHabits, setLogs } = useHabits();
+  const { objectives, addObjective, updateObjective, deleteObjective, setObjectives } = useObjectives();
+  const { closedDays, isDayClosed, closeDay, calculateStreak, setClosedDays, weeklyInsights, addWeeklyInsight, setWeeklyInsights } = useDayClosure();
+  const { stats, addExp, completeOnboarding, setStats } = useGamification({ onLevelUp: handleLevelUp });
+
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  // Unique User ID management
+  const [userId] = useState(() => {
+    const saved = localStorage.getItem('iterum_user_id');
+    if (saved) return saved;
+    const newId = `user_${crypto.randomUUID()}`;
+    localStorage.setItem('iterum_user_id', newId);
+    return newId;
+  });
+
+  const handleSync = async () => {
+    if (!import.meta.env.VITE_SUPABASE_URL) {
+      setToast({
+        isOpen: true,
+        title: 'Configuración Requerida',
+        message: 'Configura las variables de Supabase en .env para activar el Sync.'
+      });
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      const allData = {
+        tasks,
+        habits,
+        logs,
+        objectives,
+        closedDays,
+        weeklyInsights,
+        stats
+      };
+      
+      await SyncService.syncData(userId, allData);
+      
+      setToast({
+        isOpen: true,
+        title: 'Sincronización Exitosa',
+        message: 'Tus datos están seguros en la nube.'
+      });
+    } catch (error) {
+      console.error('Sync failed', error);
+      setToast({
+        isOpen: true,
+        title: 'Error de Sincronización',
+        message: 'No se pudo conectar con el servidor.'
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!import.meta.env.VITE_SUPABASE_URL) {
+      setToast({
+        isOpen: true,
+        title: 'Configuración Requerida',
+        message: 'Configura las variables de Supabase en .env para activar el Restore.'
+      });
+      return;
+    }
+
+    if (!window.confirm('¿Estás seguro? Esto sobrescribirá tus datos locales con los de la nube.')) {
+      return;
+    }
+
+    setIsRestoring(true);
+    try {
+      const cloudData = await SyncService.fetchData(userId);
+      
+      if (!cloudData) {
+        setToast({
+          isOpen: true,
+          title: 'Sin datos',
+          message: 'No se encontraron datos en la nube para este usuario.'
+        });
+        return;
+      }
+
+      // Restore all states
+      if (cloudData.tasks) setTasks(cloudData.tasks.map((t: any) => ({ ...t, date: new Date(t.date) })));
+      if (cloudData.habits) setHabits(cloudData.habits.map((h: any) => ({ ...h, createdAt: new Date(h.createdAt), archivedAt: h.archivedAt ? new Date(h.archivedAt) : undefined })));
+      if (cloudData.logs) setLogs(cloudData.logs.map((l: any) => ({ ...l, createdAt: new Date(l.createdAt) })));
+      if (cloudData.objectives) setObjectives(cloudData.objectives.map((o: any) => ({ ...o, createdAt: new Date(o.createdAt), deadline: o.deadline ? new Date(o.deadline) : undefined })));
+      if (cloudData.closedDays) setClosedDays(cloudData.closedDays.map((d: any) => ({ ...d, closedAt: new Date(d.closedAt) })));
+      if (cloudData.weeklyInsights) setWeeklyInsights(cloudData.weeklyInsights.map((i: any) => ({ ...i, generatedAt: new Date(i.generatedAt) })));
+      if (cloudData.stats) setStats(cloudData.stats);
+
+      setToast({
+        isOpen: true,
+        title: 'Restauración Exitosa',
+        message: 'Tus datos han sido recuperados.'
+      });
+    } catch (error) {
+      console.error('Restore failed', error);
+      setToast({
+        isOpen: true,
+        title: 'Error de Restauración',
+        message: 'No se pudo recuperar los datos del servidor.'
+      });
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  // Auto-sync effect
+  useEffect(() => {
+    if (!import.meta.env.VITE_SUPABASE_URL) return;
+    
+    const timer = setTimeout(() => {
+      const allData = { tasks, habits, logs, objectives, closedDays, weeklyInsights, stats };
+      SyncService.syncData(userId, allData).catch(console.error);
+    }, 10000); // Sync after 10 seconds of inactivity
+
+    return () => clearTimeout(timer);
+  }, [tasks, habits, logs, objectives, closedDays, weeklyInsights, stats, userId]);
+
+  const generateWeeklyInsight = async () => {
+    setIsGeneratingInsight(true);
+    try {
+      const service = new WeeklyInsightService(process.env.GEMINI_API_KEY || '');
+      const journalReflections = tasks
+        .filter(t => t.type === 'journal' && t.content)
+        .map(t => ({ date: format(t.date, 'yyyy-MM-dd'), content: t.content || '' }));
+      
+      const insight = await service.generateWeeklyInsight(habits, logs, objectives, journalReflections);
+      addWeeklyInsight(insight);
+      setWeeklyInsight(insight);
+      setIsWeeklyReviewOpen(true);
+    } catch (error) {
+      console.error('Failed to generate weekly insight', error);
+      setToast({
+        isOpen: true,
+        title: 'Error',
+        message: 'No se pudo generar el análisis semanal. Inténtalo de nuevo.'
+      });
+    } finally {
+      setIsGeneratingInsight(false);
+    }
+  };
+
+  const getDailyStats = () => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = subDays(new Date(), 6 - i);
+      const dateStr = format(date, 'yyyy-MM-dd');
+      const dayLogs = logs.filter(l => l.date === dateStr);
+      const activeHabitsCount = habits.filter(h => h.isActive).length;
+      const rate = activeHabitsCount > 0 ? dayLogs.length / activeHabitsCount : 0;
+      return {
+        day: format(date, 'EEE', { locale: es }),
+        rate: Math.min(rate, 1)
+      };
+    });
+  };
+
+  const handleToggleMilestone = (objectiveId: string, milestoneId: string) => {
+    const objective = objectives.find(o => o.id === objectiveId);
+    if (!objective || !objective.milestones) return;
+
+    const updatedMilestones = objective.milestones.map(m => 
+      m.id === milestoneId ? { ...m, completed: !m.completed, completedAt: !m.completed ? new Date() : undefined } : m
+    );
+
+    updateObjective(objectiveId, { milestones: updatedMilestones });
+    
+    // Award EXP for completing a milestone
+    const milestone = objective.milestones.find(m => m.id === milestoneId);
+    if (milestone && !milestone.completed) {
+      addExp(25, 'discipline');
+      soundManager.playSuccess();
+      setToast({
+        isOpen: true,
+        title: '¡Hito Alcanzado!',
+        message: `Has completado: ${milestone.title}`
+      });
+    }
+  };
 
   const toggleHabitLog = (habitId: string, date: Date, value?: number, note?: string) => {
     const dateStr = format(date, 'yyyy-MM-dd');
@@ -47,6 +266,7 @@ export default function App() {
     // Award EXP for first check-in or note
     if (!existingLog) {
       addExp(10, 'discipline');
+      soundManager.playPop();
     } else if (note && !existingLog.note) {
       addExp(8, 'consistency');
     }
@@ -140,24 +360,27 @@ export default function App() {
     return result;
   };
 
-  const handleSaveTask = (taskData: Omit<Task, 'id' | 'completed'>) => {
+  const handleSaveTask = (taskData: Omit<Task, 'id' | 'completed'> & { habitData?: any, objectiveData?: any }) => {
     if (taskToEdit) {
       updateTask(taskToEdit.id, taskData);
     } else if (taskData.type === 'habit') {
       addHabit({
         name: taskData.title,
         description: taskData.description,
-        frequency: 'daily',
-        type: 'yesno',
+        frequency: taskData.habitData?.frequency || 'daily',
+        type: taskData.habitData?.type || 'yesno',
+        targetValue: taskData.habitData?.targetValue,
+        unit: taskData.habitData?.unit,
         color: taskData.color,
       });
     } else if (taskData.type === 'objective') {
       addObjective({
         title: taskData.title,
         description: taskData.description,
-        targetValue: 100,
+        targetValue: taskData.objectiveData?.targetValue || 100,
         currentValue: 0,
-        unit: '%',
+        unit: taskData.objectiveData?.unit || '%',
+        deadline: taskData.objectiveData?.deadline,
         color: taskData.color,
       });
     } else {
@@ -202,15 +425,27 @@ export default function App() {
     { mode: 'today', label: 'Hoy', icon: Zap },
     { mode: 'habits', label: 'Hábitos', icon: Repeat },
     { mode: 'objectives', label: 'Objetivos', icon: Target },
+    { mode: 'journal', label: 'Diario', icon: BookOpen },
     { mode: 'week', label: 'Semana', icon: LayoutGrid },
     { mode: 'month', label: 'Mes', icon: CalendarIcon },
     { mode: 'archive', label: 'Archivo', icon: ArchiveIcon },
   ];
 
+  const streak = calculateStreak();
+
   return (
-    <div className="min-h-screen bg-bg-primary dark:bg-[--dark-bg-primary] text-text-primary dark:text-[--dark-text-primary] font-sans transition-colors duration-300">
+    <div className={cn(
+      "min-h-screen bg-bg-primary dark:bg-[--dark-bg-primary] text-text-primary dark:text-[--dark-text-primary] font-sans transition-all duration-700",
+      isFocusMode && "bg-black text-white/90"
+    )}>
+      {/* Focus Mode Overlay */}
+      {isFocusMode && (
+        <div className="fixed inset-0 z-[100] bg-black pointer-events-none opacity-40 mix-blend-multiply" />
+      )}
+      
       {/* Header */}
-      <header className="sticky top-0 z-20 bg-bg-primary/80 dark:bg-[--dark-bg-primary]/80 backdrop-blur-xl border-b border-border-subtle dark:border-[--dark-border-subtle]">
+      {!isFocusMode && (
+        <header className="sticky top-0 z-20 bg-bg-primary/80 dark:bg-[--dark-bg-primary]/80 backdrop-blur-xl border-b border-border-subtle dark:border-[--dark-border-subtle]">
         <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between gap-8">
           <div className="flex items-center gap-3 flex-shrink-0">
             <div className="w-10 h-10 bg-accent rounded-[12px] flex items-center justify-center shadow-lg shadow-accent/20">
@@ -290,8 +525,9 @@ export default function App() {
           </div>
         </div>
       </header>
+    )}
 
-      {/* Main Content */}
+    {/* Main Content */}
       <main className="max-w-6xl mx-auto px-6 py-10">
         <div className="flex flex-col gap-10">
           {/* View Header */}
@@ -300,15 +536,41 @@ export default function App() {
               {viewMode === 'today' && <Zap className="w-3 h-3" />}
               {viewMode === 'habits' && <Repeat className="w-3 h-3" />}
               {viewMode === 'objectives' && <Target className="w-3 h-3" />}
+              {viewMode === 'journal' && <BookOpen className="w-3 h-3" />}
               {viewMode === 'week' && <LayoutGrid className="w-3 h-3" />}
               {viewMode === 'month' && <CalendarIcon className="w-3 h-3" />}
               {viewMode === 'today' ? 'Ejecución' : viewMode.toUpperCase()}
             </div>
             <h2 className="text-4xl font-bold capitalize">
-              {viewMode === 'today' ? 'Hoy' : viewMode === 'habits' ? 'Hábitos' : viewMode === 'objectives' ? 'Objetivos' : viewMode}
+              {viewMode === 'today' ? 'Hoy' : viewMode === 'habits' ? 'Hábitos' : viewMode === 'objectives' ? 'Objetivos' : viewMode === 'journal' ? 'Diario' : viewMode}
             </h2>
             {viewMode === 'today' && (
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-6">
+                <AIInsightBanner habits={habits} logs={logs} tasks={tasks} />
+                
+                {streak >= 7 && !isDayClosed(new Date()) && (
+                  <div className="p-4 bg-accent/10 border border-accent/20 rounded-[24px] flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center shadow-lg shadow-accent/20">
+                        <Flame className="w-5 h-5 text-bg-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold">¡Estás en racha de {streak} días!</p>
+                        <p className="text-[10px] text-text-muted uppercase tracking-widest">¿Qué tal un nuevo objetivo mensual?</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setObjectiveToEdit(undefined);
+                        setIsObjectiveModalOpen(true);
+                      }}
+                      className="px-4 py-2 bg-accent text-bg-primary rounded-full text-[10px] font-bold uppercase tracking-widest hover:scale-105 transition-all"
+                    >
+                      Crear Objetivo
+                    </button>
+                  </div>
+                )}
+                
                 <div className="flex items-center justify-between">
                   <p className="text-text-muted dark:text-[--dark-text-muted]">
                     {filteredTasks.filter(t => !t.completed).length} ítems prioritarios para hoy.
@@ -375,6 +637,7 @@ export default function App() {
                       key={objective.id} 
                       objective={objective} 
                       onEdit={handleEditObjective}
+                      onToggleMilestone={handleToggleMilestone}
                     />
                   ))}
                   {filteredObjectives.length === 0 && (
@@ -383,9 +646,19 @@ export default function App() {
                     </div>
                   )}
                 </div>
-              ) : viewMode === 'today' || viewMode === 'week' ? (
+              ) : viewMode === 'journal' ? (
+                <JournalView 
+                  tasks={tasks} 
+                  weeklyInsights={weeklyInsights}
+                  onEdit={handleEditTask} 
+                  onViewInsight={(insight) => {
+                    setWeeklyInsight(insight);
+                    setIsWeeklyReviewOpen(true);
+                  }}
+                />
+              ) : viewMode === 'today' ? (
                 <div className="space-y-12">
-                  {viewMode === 'today' && todayHabits.length > 0 && (
+                  {todayHabits.length > 0 && (
                     <section className="space-y-6">
                       <h3 className="text-xs font-bold text-accent uppercase tracking-[0.2em] flex items-center gap-3">
                         <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
@@ -412,6 +685,32 @@ export default function App() {
                     onToggle={toggleTask} 
                     onDelete={deleteTask}
                     onEdit={handleEditTask}
+                  />
+                </div>
+              ) : viewMode === 'week' ? (
+                <div className="space-y-8">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-bold tracking-tight">Análisis Semanal</h2>
+                      <p className="text-text-muted dark:text-[--dark-text-muted] text-sm">Tu evolución y patrones de conducta</p>
+                    </div>
+                    <button
+                      onClick={generateWeeklyInsight}
+                      disabled={isGeneratingInsight}
+                      className="iterum-button-primary flex items-center gap-2"
+                    >
+                      {isGeneratingInsight ? (
+                        <div className="w-4 h-4 border-2 border-bg-primary/30 border-t-bg-primary rounded-full animate-spin" />
+                      ) : (
+                        <Sparkles className="w-4 h-4" />
+                      )}
+                      {isGeneratingInsight ? 'Analizando...' : 'Generar Sabiduría Semanal'}
+                    </button>
+                  </div>
+                  <WeekView 
+                    habits={habits}
+                    logs={logs}
+                    userLevel={stats.level}
                   />
                 </div>
               ) : (
@@ -499,11 +798,69 @@ export default function App() {
                     <BookOpen className="w-5 h-5 text-accent" />
                     Journal
                   </h3>
-                  <button className="text-xs text-accent font-semibold">NUEVO</button>
+                  <div className="flex items-center gap-2">
+                    {stats.level >= 5 && (
+                      <button 
+                        onClick={() => setIsFocusMode(!isFocusMode)}
+                        className={cn(
+                          "px-2 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest transition-all",
+                          isFocusMode ? "bg-accent text-bg-primary" : "bg-bg-secondary text-text-muted hover:text-accent"
+                        )}
+                      >
+                        {isFocusMode ? 'Salir Foco' : 'Modo Foco'}
+                      </button>
+                    )}
+                    <button className="text-xs text-accent font-semibold">NUEVO</button>
+                  </div>
                 </div>
                 <p className="text-sm text-text-muted dark:text-[--dark-text-muted] italic">
                   "El foco no es lo que haces, sino lo que dejas de hacer..."
                 </p>
+              </section>
+
+              <section className="iterum-card border-dashed">
+                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-4">Datos y Respaldo</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    onClick={() => {
+                      const data = { habits, logs, objectives, tasks, closedDays, weeklyInsights, stats };
+                      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `iterum-backup-${format(new Date(), 'yyyy-MM-dd')}.json`;
+                      a.click();
+                    }}
+                    className="py-2 px-4 rounded-[12px] border border-border-subtle dark:border-[--dark-border-subtle] text-[10px] font-bold text-text-muted hover:text-accent hover:border-accent/30 transition-all flex items-center justify-center gap-2"
+                  >
+                    <ArchiveIcon className="w-3 h-3" />
+                    Exportar
+                  </button>
+                  <button
+                    onClick={handleSync}
+                    disabled={isSyncing || isRestoring}
+                    className="py-2 px-4 rounded-[12px] border border-border-subtle dark:border-[--dark-border-subtle] text-[10px] font-bold text-text-muted hover:text-accent hover:border-accent/30 transition-all flex items-center justify-center gap-2"
+                  >
+                    {isSyncing ? (
+                      <div className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+                    ) : (
+                      <Sparkles className="w-3 h-3" />
+                    )}
+                    {isSyncing ? 'Subiendo...' : 'Sync Cloud'}
+                  </button>
+                  <button
+                    onClick={handleRestore}
+                    disabled={isSyncing || isRestoring}
+                    className="col-span-2 py-2 px-4 rounded-[12px] border border-border-subtle dark:border-[--dark-border-subtle] text-[10px] font-bold text-text-muted hover:text-accent hover:border-accent/30 transition-all flex items-center justify-center gap-2"
+                  >
+                    {isRestoring ? (
+                      <div className="w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+                    ) : (
+                      <ArchiveIcon className="w-3 h-3" />
+                    )}
+                    {isRestoring ? 'Restaurando...' : 'Restaurar Cloud'}
+                  </button>
+                </div>
               </section>
             </aside>
           </div>
@@ -525,6 +882,7 @@ export default function App() {
         onSave={handleSaveHabit}
         habitToEdit={habitToEdit}
         objectives={objectives}
+        userLevel={stats.level}
       />
 
       <ObjectiveModal
@@ -552,6 +910,40 @@ export default function App() {
           setIsAIModalOpen(false);
         }}
       />
+
+      {/* Mobile FAB */}
+      <div className="fixed bottom-8 right-6 z-40 sm:hidden">
+        <button
+          onClick={() => {
+            setSelectedDate(new Date());
+            setTaskToEdit(undefined);
+            setIsTaskModalOpen(true);
+          }}
+          className="w-16 h-16 bg-accent text-bg-primary rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-transform"
+        >
+          <Plus className="w-8 h-8" />
+        </button>
+      </div>
+
+      {!stats.onboardingCompleted && (
+        <OnboardingWizard onComplete={completeOnboarding} />
+      )}
+
+      <Toast 
+        isOpen={toast.isOpen}
+        onClose={() => setToast(prev => ({ ...prev, isOpen: false }))}
+        title={toast.title}
+        message={toast.message}
+      />
+
+      {weeklyInsight && (
+        <WeeklyReviewModal
+          isOpen={isWeeklyReviewOpen}
+          onClose={() => setIsWeeklyReviewOpen(false)}
+          insight={weeklyInsight}
+          dailyStats={getDailyStats()}
+        />
+      )}
     </div>
   );
 }
