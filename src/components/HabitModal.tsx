@@ -2,7 +2,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import { X, Zap, Repeat, Target, Clock, BookOpen, Sparkles } from 'lucide-react';
 import { Habit, HabitType } from '../types';
 import { cn } from '../utils';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from '@google/genai';
 import { useObjectiveStore } from '../store/useObjectiveStore';
 import { useUserStore } from '../store/useUserStore';
 
@@ -37,8 +37,8 @@ const FREQUENCIES = [
 ];
 
 export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalProps) {
-  const objectives = useObjectiveStore(state => state.objectives);
-  const userLevel = useUserStore(state => state.stats.level);
+  const objectives = useObjectiveStore((state) => state.objectives);
+  const userLevel = useUserStore((state) => state.stats.level);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [frequency, setFrequency] = useState('daily');
@@ -62,11 +62,11 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalP
       }
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: 'gemini-3-flash-preview',
         contents: `Sugiere configuración para un hábito llamado "${name}". 
         Responde SOLO en JSON con este formato: 
         { "frequency": "daily" | "weekly:Mon,Wed,Fri" | "everyXdays:2", "category": "string", "description": "string", "type": "yesno" | "numeric" | "timer", "unit": "string", "targetValue": number }`,
-        config: { responseMimeType: "application/json" }
+        config: { responseMimeType: 'application/json' },
       });
 
       const suggestion = JSON.parse(response.text || '{}');
@@ -142,33 +142,34 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalP
   };
 
   const toggleObjective = (id: string) => {
-    setSelectedObjectiveIds(prev => 
-      prev.includes(id) ? prev.filter(oid => oid !== id) : [...prev, id]
+    setSelectedObjectiveIds((prev) =>
+      prev.includes(id) ? prev.filter((oid) => oid !== id) : [...prev, id],
     );
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bg-primary/40 dark:bg-black/60 backdrop-blur-md">
-      <div 
-        className="bg-bg-primary dark:bg-[--dark-bg-primary] rounded-[24px] shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-300 border border-border-subtle dark:border-[--dark-border-subtle]"
+    <div className="bg-bg-primary/40 fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md dark:bg-black/60">
+      <div
+        className="bg-bg-primary animate-in fade-in zoom-in-95 border-border-subtle w-full max-w-md overflow-hidden rounded-[24px] border shadow-2xl duration-300 dark:border-[--dark-border-subtle] dark:bg-[--dark-bg-primary]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-8 py-6 border-b border-border-subtle dark:border-[--dark-border-subtle]">
-          <h2 className="text-xl font-bold">
-            {habitToEdit ? 'Editar Hábito' : 'Nuevo Hábito'}
-          </h2>
-          <button 
+        <div className="border-border-subtle flex items-center justify-between border-b px-8 py-6 dark:border-[--dark-border-subtle]">
+          <h2 className="text-xl font-bold">{habitToEdit ? 'Editar Hábito' : 'Nuevo Hábito'}</h2>
+          <button
             onClick={onClose}
-            className="p-2 text-text-muted hover:text-accent bg-bg-secondary dark:bg-[--dark-bg-secondary] rounded-[12px] transition-colors"
+            className="text-text-muted hover:text-accent bg-bg-secondary rounded-[12px] p-2 transition-colors dark:bg-[--dark-bg-secondary]"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="max-h-[70vh] space-y-6 overflow-y-auto p-8">
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label htmlFor="name" className="block text-xs font-bold uppercase tracking-widest text-text-muted">
+            <div className="mb-2 flex items-center justify-between">
+              <label
+                htmlFor="name"
+                className="text-text-muted block text-xs font-bold tracking-widest uppercase"
+              >
                 Nombre del Hábito
               </label>
               {name.trim() && !habitToEdit && navigator.onLine && (
@@ -177,11 +178,11 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalP
                   onClick={suggestWithAI}
                   disabled={isSuggesting}
                   className={cn(
-                    "text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 transition-all",
-                    isSuggesting ? "text-accent animate-pulse" : "text-accent/60 hover:text-accent"
+                    'flex items-center gap-1.5 text-[10px] font-bold tracking-widest uppercase transition-all',
+                    isSuggesting ? 'text-accent animate-pulse' : 'text-accent/60 hover:text-accent',
                   )}
                 >
-                  <Sparkles className="w-3 h-3" />
+                  <Sparkles className="h-3 w-3" />
                   {isSuggesting ? 'Sugiriendo...' : 'Sugerir con IA'}
                 </button>
               )}
@@ -205,22 +206,25 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalP
                 type="button"
                 onClick={() => setType(item.type)}
                 className={cn(
-                  "flex flex-col items-center gap-2 p-3 rounded-[16px] border transition-all",
-                  type === item.type 
-                    ? "bg-accent/10 border-accent text-accent shadow-sm" 
-                    : "bg-bg-secondary dark:bg-[--dark-bg-secondary] border-border-subtle dark:border-[--dark-border-subtle] text-text-muted opacity-60 hover:opacity-100"
+                  'flex flex-col items-center gap-2 rounded-[16px] border p-3 transition-all',
+                  type === item.type
+                    ? 'bg-accent/10 border-accent text-accent shadow-sm'
+                    : 'bg-bg-secondary border-border-subtle text-text-muted opacity-60 hover:opacity-100 dark:border-[--dark-border-subtle] dark:bg-[--dark-bg-secondary]',
                 )}
               >
-                <item.icon className="w-5 h-5" />
-                <span className="text-[10px] font-bold uppercase tracking-wider">{item.label}</span>
+                <item.icon className="h-5 w-5" />
+                <span className="text-[10px] font-bold tracking-wider uppercase">{item.label}</span>
               </button>
             ))}
           </div>
 
           {type !== 'yesno' && (
-            <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
+            <div className="animate-in fade-in slide-in-from-top-2 grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="target" className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
+                <label
+                  htmlFor="target"
+                  className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase"
+                >
                   Objetivo
                 </label>
                 <input
@@ -233,7 +237,10 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalP
                 />
               </div>
               <div>
-                <label htmlFor="unit" className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
+                <label
+                  htmlFor="unit"
+                  className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase"
+                >
                   Unidad
                 </label>
                 <input
@@ -250,7 +257,10 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalP
           )}
 
           <div>
-            <label htmlFor="frequency" className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
+            <label
+              htmlFor="frequency"
+              className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase"
+            >
               Frecuencia
             </label>
             <select
@@ -260,14 +270,16 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalP
               className="iterum-input w-full appearance-none"
             >
               {FREQUENCIES.map((f) => (
-                <option key={f.value} value={f.value}>{f.label}</option>
+                <option key={f.value} value={f.value}>
+                  {f.label}
+                </option>
               ))}
             </select>
           </div>
 
           {objectives.length > 0 && (
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-3">
+              <label className="text-text-muted mb-3 block text-xs font-bold tracking-widest uppercase">
                 Contribuye a Objetivos
               </label>
               <div className="flex flex-wrap gap-2">
@@ -277,10 +289,10 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalP
                     type="button"
                     onClick={() => toggleObjective(obj.id)}
                     className={cn(
-                      "px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-all",
+                      'rounded-full border px-3 py-1.5 text-[10px] font-bold tracking-wider uppercase transition-all',
                       selectedObjectiveIds.includes(obj.id)
-                        ? "bg-accent/10 border-accent text-accent"
-                        : "bg-bg-secondary border-border-subtle text-text-muted"
+                        ? 'bg-accent/10 border-accent text-accent'
+                        : 'bg-bg-secondary border-border-subtle text-text-muted',
                     )}
                   >
                     {obj.title}
@@ -292,7 +304,10 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalP
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="category" className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
+              <label
+                htmlFor="category"
+                className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase"
+              >
                 Categoría
               </label>
               <input
@@ -305,7 +320,10 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalP
               />
             </div>
             <div>
-              <label htmlFor="reminder" className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
+              <label
+                htmlFor="reminder"
+                className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase"
+              >
                 Recordatorio
               </label>
               <input
@@ -319,13 +337,13 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalP
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="block text-xs font-bold uppercase tracking-widest text-text-muted">
+            <div className="mb-3 flex items-center justify-between">
+              <label className="text-text-muted block text-xs font-bold tracking-widest uppercase">
                 Color Distintivo
               </label>
               {userLevel < 2 && (
-                <span className="text-[10px] font-bold text-accent uppercase tracking-widest flex items-center gap-1">
-                  <Zap className="w-3 h-3" />
+                <span className="text-accent flex items-center gap-1 text-[10px] font-bold tracking-widest uppercase">
+                  <Zap className="h-3 w-3" />
                   Nivel 2 Desbloquea más
                 </span>
               )}
@@ -340,15 +358,17 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalP
                     disabled={isLocked}
                     onClick={() => setColor(c)}
                     className={cn(
-                      "w-7 h-7 rounded-full transition-all border-2 relative",
-                      color === c ? "scale-125 border-text-primary shadow-lg" : "border-transparent hover:scale-110",
-                      isLocked && "opacity-20 cursor-not-allowed grayscale"
+                      'relative h-7 w-7 rounded-full border-2 transition-all',
+                      color === c
+                        ? 'border-text-primary scale-125 shadow-lg'
+                        : 'border-transparent hover:scale-110',
+                      isLocked && 'cursor-not-allowed opacity-20 grayscale',
                     )}
                     style={{ backgroundColor: c }}
                   >
                     {isLocked && (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <Zap className="w-3 h-3 text-text-primary" />
+                        <Zap className="text-text-primary h-3 w-3" />
                       </div>
                     )}
                   </button>
@@ -357,18 +377,15 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalP
             </div>
           </div>
 
-          <div className="pt-4 flex justify-end gap-3">
+          <div className="flex justify-end gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3 text-sm font-bold text-text-muted hover:text-text-primary transition-colors"
+              className="text-text-muted hover:text-text-primary px-6 py-3 text-sm font-bold transition-colors"
             >
               Cancelar
             </button>
-            <button
-              type="submit"
-              className="iterum-button-primary"
-            >
+            <button type="submit" className="iterum-button-primary">
               {habitToEdit ? 'Guardar Cambios' : 'Crear Hábito'}
             </button>
           </div>

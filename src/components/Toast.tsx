@@ -25,21 +25,21 @@ export function Toast({ isOpen, onClose, title, message, type = 'info' }: ToastP
           initial={{ opacity: 0, y: 50, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.9 }}
-          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4"
+          className="fixed bottom-24 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 px-4"
         >
-          <div className="bg-bg-secondary dark:bg-[--dark-bg-secondary] border border-accent/20 rounded-[24px] p-4 shadow-2xl flex items-center gap-4">
-            <div className="w-12 h-12 bg-accent/10 rounded-[16px] flex items-center justify-center text-accent">
-              <Trophy className="w-6 h-6" />
+          <div className="bg-bg-secondary border-accent/20 flex items-center gap-4 rounded-[24px] border p-4 shadow-2xl dark:bg-[--dark-bg-secondary]">
+            <div className="bg-accent/10 text-accent flex h-12 w-12 items-center justify-center rounded-[16px]">
+              <Trophy className="h-6 w-6" />
             </div>
             <div className="flex-1">
-              <h4 className="font-bold text-sm">{title}</h4>
-              <p className="text-xs text-text-muted dark:text-[--dark-text-muted]">{message}</p>
+              <h4 className="text-sm font-bold">{title}</h4>
+              <p className="text-text-muted text-xs dark:text-[--dark-text-muted]">{message}</p>
             </div>
-            <button 
+            <button
               onClick={onClose}
-              className="p-2 text-text-muted hover:text-accent transition-colors"
+              className="text-text-muted hover:text-accent p-2 transition-colors"
             >
-              <X className="w-4 h-4" />
+              <X className="h-4 w-4" />
             </button>
           </div>
         </motion.div>

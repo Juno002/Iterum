@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Sparkles, 
-  Target, 
-  Repeat, 
-  Zap, 
-  ChevronRight, 
-  ChevronLeft, 
+import {
+  Sparkles,
+  Target,
+  Repeat,
+  Zap,
+  ChevronRight,
+  ChevronLeft,
   CheckCircle2,
   Trophy,
-  ArrowRight
+  ArrowRight,
 } from 'lucide-react';
 import { cn } from '../utils';
 
@@ -24,32 +24,36 @@ type Step = {
 const STEPS: Step[] = [
   {
     id: 0,
-    title: "Bienvenido a Iterum",
-    description: "Iterum es tu compañero para cerrar ciclos diarios de forma consciente y construir una vida con propósito.",
+    title: 'Bienvenido a Iterum',
+    description:
+      'Iterum es tu compañero para cerrar ciclos diarios de forma consciente y construir una vida con propósito.',
     icon: Sparkles,
-    color: "text-accent"
+    color: 'text-accent',
   },
   {
     id: 1,
-    title: "Hábitos con Intención",
-    description: "No solo taches tareas. Registra tus hábitos, añade reflexiones y mira cómo tus rachas crecen día a día.",
+    title: 'Hábitos con Intención',
+    description:
+      'No solo taches tareas. Registra tus hábitos, añade reflexiones y mira cómo tus rachas crecen día a día.',
     icon: Repeat,
-    color: "text-accent-secondary"
+    color: 'text-accent-secondary',
   },
   {
     id: 2,
-    title: "Objetivos Claros",
-    description: "Vincula tus hábitos diarios a metas a largo plazo. Cada pequeña acción te acerca a tu gran objetivo.",
+    title: 'Objetivos Claros',
+    description:
+      'Vincula tus hábitos diarios a metas a largo plazo. Cada pequeña acción te acerca a tu gran objetivo.',
     icon: Target,
-    color: "text-green-500"
+    color: 'text-green-500',
   },
   {
     id: 3,
-    title: "Gamificación Real",
-    description: "Gana EXP por tu disciplina y consistencia. Desbloquea nuevas funciones a medida que subes de nivel.",
+    title: 'Gamificación Real',
+    description:
+      'Gana EXP por tu disciplina y consistencia. Desbloquea nuevas funciones a medida que subes de nivel.',
     icon: Trophy,
-    color: "text-yellow-500"
-  }
+    color: 'text-yellow-500',
+  },
 ];
 
 interface OnboardingWizardProps {
@@ -61,7 +65,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
 
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {
-      setCurrentStep(prev => prev + 1);
+      setCurrentStep((prev) => prev + 1);
     } else {
       onComplete();
     }
@@ -69,7 +73,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
 
   const handleBack = () => {
     if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1);
+      setCurrentStep((prev) => prev - 1);
     }
   };
 
@@ -77,26 +81,30 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
   const Icon = step.icon;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-bg-primary/90 dark:bg-[--dark-bg-primary]/90 backdrop-blur-md">
-      <motion.div 
+    <div className="bg-bg-primary/90 fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md dark:bg-[--dark-bg-primary]/90">
+      <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="w-full max-w-lg bg-bg-secondary dark:bg-[--dark-bg-secondary] rounded-[32px] border border-border-subtle dark:border-[--dark-border-subtle] shadow-2xl overflow-hidden"
+        className="bg-bg-secondary border-border-subtle w-full max-w-lg overflow-hidden rounded-[32px] border shadow-2xl dark:border-[--dark-border-subtle] dark:bg-[--dark-bg-secondary]"
       >
         <div className="p-10">
-          <div className="flex justify-between items-center mb-12">
+          <div className="mb-12 flex items-center justify-between">
             <div className="flex gap-1.5">
               {STEPS.map((_, idx) => (
-                <div 
-                  key={idx} 
+                <div
+                  key={idx}
                   className={cn(
-                    "h-1.5 rounded-full transition-all duration-500",
-                    idx === currentStep ? "w-8 bg-accent" : "w-2 bg-border-subtle dark:bg-[--dark-border-subtle]"
+                    'h-1.5 rounded-full transition-all duration-500',
+                    idx === currentStep
+                      ? 'bg-accent w-8'
+                      : 'bg-border-subtle w-2 dark:bg-[--dark-border-subtle]',
                   )}
                 />
               ))}
             </div>
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Paso {currentStep + 1} de {STEPS.length}</span>
+            <span className="text-text-muted text-[10px] font-bold tracking-widest uppercase">
+              Paso {currentStep + 1} de {STEPS.length}
+            </span>
           </div>
 
           <AnimatePresence mode="wait">
@@ -108,11 +116,16 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               transition={{ duration: 0.3 }}
               className="text-center"
             >
-              <div className={cn("w-20 h-20 mx-auto rounded-[24px] bg-bg-primary dark:bg-[--dark-bg-primary] flex items-center justify-center mb-8 shadow-inner", step.color)}>
-                <Icon className="w-10 h-10" />
+              <div
+                className={cn(
+                  'bg-bg-primary mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-[24px] shadow-inner dark:bg-[--dark-bg-primary]',
+                  step.color,
+                )}
+              >
+                <Icon className="h-10 w-10" />
               </div>
-              <h2 className="text-3xl font-bold tracking-tight mb-4">{step.title}</h2>
-              <p className="text-text-muted dark:text-[--dark-text-muted] leading-relaxed mb-12">
+              <h2 className="mb-4 text-3xl font-bold tracking-tight">{step.title}</h2>
+              <p className="text-text-muted mb-12 leading-relaxed dark:text-[--dark-text-muted]">
                 {step.description}
               </p>
             </motion.div>
@@ -123,28 +136,34 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
               onClick={handleBack}
               disabled={currentStep === 0}
               className={cn(
-                "flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all",
-                currentStep === 0 ? "opacity-0 pointer-events-none" : "text-text-muted hover:text-text-primary dark:hover:text-[--dark-text-primary]"
+                'flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold transition-all',
+                currentStep === 0
+                  ? 'pointer-events-none opacity-0'
+                  : 'text-text-muted hover:text-text-primary dark:hover:text-[--dark-text-primary]',
               )}
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="h-4 w-4" />
               Atrás
             </button>
-            
+
             <button
               onClick={handleNext}
-              className="flex items-center gap-2 px-8 py-3 bg-accent text-bg-primary rounded-full text-sm font-bold shadow-lg shadow-accent/20 hover:scale-105 active:scale-95 transition-all"
+              className="bg-accent text-bg-primary shadow-accent/20 flex items-center gap-2 rounded-full px-8 py-3 text-sm font-bold shadow-lg transition-all hover:scale-105 active:scale-95"
             >
               {currentStep === STEPS.length - 1 ? 'Empezar ahora' : 'Siguiente'}
-              {currentStep === STEPS.length - 1 ? <CheckCircle2 className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              {currentStep === STEPS.length - 1 ? (
+                <CheckCircle2 className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
             </button>
           </div>
         </div>
-        
+
         {currentStep === 3 && (
-          <div className="bg-accent/5 border-t border-border-subtle dark:border-[--dark-border-subtle] p-6 text-center">
-            <p className="text-xs font-medium text-accent flex items-center justify-center gap-2">
-              <Zap className="w-3 h-3" />
+          <div className="bg-accent/5 border-border-subtle border-t p-6 text-center dark:border-[--dark-border-subtle]">
+            <p className="text-accent flex items-center justify-center gap-2 text-xs font-medium">
+              <Zap className="h-3 w-3" />
               ¡Nivel 2 desbloquea colores personalizados para tus hábitos!
             </p>
           </div>

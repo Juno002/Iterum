@@ -51,7 +51,7 @@ export const useHabitStore = create<HabitState>()(
                 logs: state.logs.map((l) =>
                   l.id === existingLog.id
                     ? { ...l, completed: true, value: value ?? l.value, note: note ?? l.note }
-                    : l
+                    : l,
                 ),
               };
             }
@@ -88,6 +88,6 @@ export const useHabitStore = create<HabitState>()(
           }));
         }
       },
-    }
-  )
+    },
+  ),
 );

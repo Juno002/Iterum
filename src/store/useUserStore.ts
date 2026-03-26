@@ -9,7 +9,11 @@ interface UserState {
   weeklyInsights: WeeklyInsight[];
   setUserId: (id: string) => void;
   setStats: (stats: UserStats) => void;
-  addExp: (amount: number, type: 'discipline' | 'consistency', onLevelUp?: (level: number) => void) => void;
+  addExp: (
+    amount: number,
+    type: 'discipline' | 'consistency',
+    onLevelUp?: (level: number) => void,
+  ) => void;
   completeOnboarding: () => void;
   setClosedDays: (days: DayClosure[]) => void;
   addClosedDay: (day: DayClosure) => void;
@@ -35,12 +39,12 @@ export const useUserStore = create<UserState>()(
 
       setUserId: (id) => set({ userId: id }),
       setStats: (stats) => set({ stats }),
-      
+
       addExp: (amount, type, onLevelUp) => {
         const prev = get().stats;
         const newTotalExp = prev.totalExp + amount;
         const newLevel = Math.floor(newTotalExp / EXP_PER_LEVEL) + 1;
-        
+
         const categoryStats = prev[type];
         const newCategoryExp = categoryStats.exp + amount;
         const newCategoryLevel = Math.floor(newCategoryExp / EXP_PER_LEVEL) + 1;
@@ -56,25 +60,28 @@ export const useUserStore = create<UserState>()(
             level: newLevel,
             [type]: {
               exp: newCategoryExp,
-              level: newCategoryLevel
-            }
-          }
+              level: newCategoryLevel,
+            },
+          },
         });
       },
 
-      completeOnboarding: () => set((state) => ({
-        stats: { ...state.stats, onboardingCompleted: true }
-      })),
+      completeOnboarding: () =>
+        set((state) => ({
+          stats: { ...state.stats, onboardingCompleted: true },
+        })),
 
       setClosedDays: (closedDays) => set({ closedDays }),
-      addClosedDay: (day) => set((state) => ({
-        closedDays: [...state.closedDays, day]
-      })),
+      addClosedDay: (day) =>
+        set((state) => ({
+          closedDays: [...state.closedDays, day],
+        })),
 
       setWeeklyInsights: (weeklyInsights) => set({ weeklyInsights }),
-      addWeeklyInsight: (insight) => set((state) => ({
-        weeklyInsights: [{ ...insight, generatedAt: new Date() }, ...state.weeklyInsights]
-      })),
+      addWeeklyInsight: (insight) =>
+        set((state) => ({
+          weeklyInsights: [{ ...insight, generatedAt: new Date() }, ...state.weeklyInsights],
+        })),
     }),
     {
       name: 'iterum_user_storage',
@@ -84,14 +91,19 @@ export const useUserStore = create<UserState>()(
           state.closedDays = state.closedDays.map((d: any) => ({
             ...d,
             closedAt: new Date(d.closedAt),
-            insight: d.insight ? { ...d.insight, generatedAt: d.insight.generatedAt ? new Date(d.insight.generatedAt) : undefined } : undefined
+            insight: d.insight
+              ? {
+                  ...d.insight,
+                  generatedAt: d.insight.generatedAt ? new Date(d.insight.generatedAt) : undefined,
+                }
+              : undefined,
           }));
           state.weeklyInsights = state.weeklyInsights.map((i: any) => ({
             ...i,
-            generatedAt: new Date(i.generatedAt)
+            generatedAt: new Date(i.generatedAt),
           }));
         }
       },
-    }
-  )
+    },
+  ),
 );

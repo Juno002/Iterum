@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, FormEvent } from 'react';
 import { X, Target, Zap, Plus, Trash2, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Objective, Milestone } from '../types';
@@ -23,7 +23,7 @@ const COLORS = [
 ];
 
 export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit }: ObjectiveModalProps) {
-  const habits = useHabitStore(state => state.habits);
+  const habits = useHabitStore((state) => state.habits);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [targetValue, setTargetValue] = useState(100);
@@ -35,12 +35,18 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit }: Obj
   const [newMilestoneTitle, setNewMilestoneTitle] = useState('');
   const [linkedHabitId, setLinkedHabitId] = useState<string | undefined>(undefined);
 
-  const linkedHabits = habits.filter(h => 
-    (objectiveToEdit && h.objectiveIds?.includes(objectiveToEdit.id)) ||
-    (h.id === linkedHabitId)
+  const linkedHabits = habits.filter(
+    (h) =>
+      (objectiveToEdit && h.objectiveIds?.includes(objectiveToEdit.id)) || h.id === linkedHabitId,
   );
 
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(isOpen);
+  const [prevEditId, setPrevEditId] = useState<string | undefined>(objectiveToEdit?.id);
+
+  if (isOpen !== prevOpen || objectiveToEdit?.id !== prevEditId) {
+    setPrevOpen(isOpen);
+    setPrevEditId(objectiveToEdit?.id);
+
     if (isOpen) {
       if (objectiveToEdit) {
         setTitle(objectiveToEdit.title);
@@ -64,7 +70,7 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit }: Obj
         setLinkedHabitId(undefined);
       }
     }
-  }, [isOpen, objectiveToEdit]);
+  }
 
   if (!isOpen) return null;
 
@@ -80,13 +86,17 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit }: Obj
   };
 
   const removeMilestone = (id: string) => {
-    setMilestones(milestones.filter(m => m.id !== id));
+    setMilestones(milestones.filter((m) => m.id !== id));
   };
 
   const toggleMilestone = (id: string) => {
-    setMilestones(milestones.map(m => 
-      m.id === id ? { ...m, completed: !m.completed, completedAt: !m.completed ? new Date() : undefined } : m
-    ));
+    setMilestones(
+      milestones.map((m) =>
+        m.id === id
+          ? { ...m, completed: !m.completed, completedAt: !m.completed ? new Date() : undefined }
+          : m,
+      ),
+    );
   };
 
   const handleSubmit = (e: FormEvent) => {
@@ -108,27 +118,33 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit }: Obj
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bg-primary/40 dark:bg-black/60 backdrop-blur-md">
-      <div 
-        className="bg-bg-primary dark:bg-[--dark-bg-primary] rounded-[24px] shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-300 border border-border-subtle dark:border-[--dark-border-subtle]"
+    <div className="bg-bg-primary/40 fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md dark:bg-black/60">
+      <div
+        className="bg-bg-primary animate-in fade-in zoom-in-95 border-border-subtle w-full max-w-md overflow-hidden rounded-[24px] border shadow-2xl duration-300 dark:border-[--dark-border-subtle] dark:bg-[--dark-bg-primary]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-8 py-6 border-b border-border-subtle dark:border-[--dark-border-subtle]">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <Target className="w-5 h-5 text-accent-secondary" />
+        <div className="border-border-subtle flex items-center justify-between border-b px-8 py-6 dark:border-[--dark-border-subtle]">
+          <h2 className="flex items-center gap-2 text-xl font-bold">
+            <Target className="text-accent-secondary h-5 w-5" />
             {objectiveToEdit ? 'Editar Objetivo' : 'Nuevo Objetivo'}
           </h2>
-          <button 
+          <button
             onClick={onClose}
-            className="p-2 text-text-muted hover:text-accent bg-bg-secondary dark:bg-[--dark-bg-secondary] rounded-[12px] transition-colors"
+            className="text-text-muted hover:text-accent bg-bg-secondary rounded-[12px] p-2 transition-colors dark:bg-[--dark-bg-secondary]"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto iterum-scrollbar">
+        <form
+          onSubmit={handleSubmit}
+          className="iterum-scrollbar max-h-[70vh] space-y-6 overflow-y-auto p-8"
+        >
           <div>
-            <label htmlFor="title" className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
+            <label
+              htmlFor="title"
+              className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase"
+            >
               Título del Objetivo
             </label>
             <input
@@ -145,7 +161,10 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit }: Obj
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="target" className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
+              <label
+                htmlFor="target"
+                className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase"
+              >
                 Meta
               </label>
               <input
@@ -158,7 +177,10 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit }: Obj
               />
             </div>
             <div>
-              <label htmlFor="unit" className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
+              <label
+                htmlFor="unit"
+                className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase"
+              >
                 Unidad
               </label>
               <input
@@ -174,7 +196,10 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit }: Obj
           </div>
 
           <div>
-            <label htmlFor="deadline" className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
+            <label
+              htmlFor="deadline"
+              className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase"
+            >
               Fecha Límite (Opcional)
             </label>
             <input
@@ -187,36 +212,49 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit }: Obj
           </div>
 
           <div>
-            <label htmlFor="linkedHabit" className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
+            <label
+              htmlFor="linkedHabit"
+              className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase"
+            >
               Vincular Hábito (Progreso Automático)
             </label>
             <select
               id="linkedHabit"
               value={linkedHabitId || ''}
               onChange={(e) => setLinkedHabitId(e.target.value || undefined)}
-              className="iterum-input w-full appearance-none bg-bg-secondary dark:bg-[--dark-bg-secondary]"
+              className="iterum-input bg-bg-secondary w-full appearance-none dark:bg-[--dark-bg-secondary]"
             >
               <option value="">Ninguno (Progreso Manual)</option>
-              {habits.map(h => (
-                <option key={h.id} value={h.id}>{h.name} ({h.type === 'numeric' ? 'Suma valores' : 'Cuenta check-ins'})</option>
+              {habits.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.name} ({h.type === 'numeric' ? 'Suma valores' : 'Cuenta check-ins'})
+                </option>
               ))}
             </select>
           </div>
 
           {objectiveToEdit && linkedHabits.length > 0 && (
             <div>
-              <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-3">
+              <label className="text-text-muted mb-3 block text-xs font-bold tracking-widest uppercase">
                 Hábitos Contribuyentes
               </label>
               <div className="space-y-2">
-                {linkedHabits.map(habit => (
-                  <div key={habit.id} className="flex items-center gap-3 p-3 bg-bg-secondary dark:bg-[--dark-bg-secondary] rounded-[14px] border border-border-subtle dark:border-[--dark-border-subtle]">
-                    <div className="w-8 h-8 rounded-[8px] flex items-center justify-center" style={{ backgroundColor: `${habit.color}20` }}>
-                      <Zap className="w-4 h-4" style={{ color: habit.color }} />
+                {linkedHabits.map((habit) => (
+                  <div
+                    key={habit.id}
+                    className="bg-bg-secondary border-border-subtle flex items-center gap-3 rounded-[14px] border p-3 dark:border-[--dark-border-subtle] dark:bg-[--dark-bg-secondary]"
+                  >
+                    <div
+                      className="flex h-8 w-8 items-center justify-center rounded-[8px]"
+                      style={{ backgroundColor: `${habit.color}20` }}
+                    >
+                      <Zap className="h-4 w-4" style={{ color: habit.color }} />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold truncate">{habit.name}</p>
-                      <p className="text-[10px] text-text-muted uppercase tracking-wider">{habit.type === 'numeric' ? 'Cuantitativo' : 'Check-in'}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold">{habit.name}</p>
+                      <p className="text-text-muted text-[10px] tracking-wider uppercase">
+                        {habit.type === 'numeric' ? 'Cuantitativo' : 'Check-in'}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -225,7 +263,7 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit }: Obj
           )}
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-3">
+            <label className="text-text-muted mb-3 block text-xs font-bold tracking-widest uppercase">
               Hitos (Milestones)
             </label>
             <div className="space-y-3">
@@ -241,34 +279,44 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit }: Obj
                 <button
                   type="button"
                   onClick={addMilestone}
-                  className="p-3 bg-accent/10 text-accent rounded-[14px] hover:bg-accent/20 transition-colors"
+                  className="bg-accent/10 text-accent hover:bg-accent/20 rounded-[14px] p-3 transition-colors"
                 >
-                  <Plus className="w-5 h-5" />
+                  <Plus className="h-5 w-5" />
                 </button>
               </div>
-              
+
               <div className="space-y-2">
                 {milestones.map((m) => (
-                  <div key={m.id} className="flex items-center gap-3 p-3 bg-bg-secondary dark:bg-[--dark-bg-secondary] rounded-[14px] border border-border-subtle dark:border-[--dark-border-subtle] group">
+                  <div
+                    key={m.id}
+                    className="bg-bg-secondary border-border-subtle group flex items-center gap-3 rounded-[14px] border p-3 dark:border-[--dark-border-subtle] dark:bg-[--dark-bg-secondary]"
+                  >
                     <button
                       type="button"
                       onClick={() => toggleMilestone(m.id)}
                       className={cn(
-                        "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
-                        m.completed ? "bg-accent border-accent text-bg-primary" : "border-text-muted/30"
+                        'flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all',
+                        m.completed
+                          ? 'bg-accent border-accent text-bg-primary'
+                          : 'border-text-muted/30',
                       )}
                     >
-                      {m.completed && <CheckCircle2 className="w-3 h-3" />}
+                      {m.completed && <CheckCircle2 className="h-3 w-3" />}
                     </button>
-                    <span className={cn("flex-1 text-sm font-medium", m.completed && "line-through text-text-muted")}>
+                    <span
+                      className={cn(
+                        'flex-1 text-sm font-medium',
+                        m.completed && 'text-text-muted line-through',
+                      )}
+                    >
                       {m.title}
                     </span>
                     <button
                       type="button"
                       onClick={() => removeMilestone(m.id)}
-                      className="p-1.5 text-text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                      className="text-text-muted p-1.5 opacity-0 transition-all group-hover:opacity-100 hover:text-red-500"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 ))}
@@ -277,7 +325,10 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit }: Obj
           </div>
 
           <div>
-            <label htmlFor="description" className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
+            <label
+              htmlFor="description"
+              className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase"
+            >
               Descripción
             </label>
             <textarea
@@ -291,7 +342,7 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit }: Obj
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-3">
+            <label className="text-text-muted mb-3 block text-xs font-bold tracking-widest uppercase">
               Color Distintivo
             </label>
             <div className="flex items-center gap-3">
@@ -301,8 +352,10 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit }: Obj
                   type="button"
                   onClick={() => setColor(c)}
                   className={cn(
-                    "w-7 h-7 rounded-full transition-all border-2",
-                    color === c ? "scale-125 border-text-primary shadow-lg" : "border-transparent hover:scale-110"
+                    'h-7 w-7 rounded-full border-2 transition-all',
+                    color === c
+                      ? 'border-text-primary scale-125 shadow-lg'
+                      : 'border-transparent hover:scale-110',
                   )}
                   style={{ backgroundColor: c }}
                 />
@@ -310,18 +363,15 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit }: Obj
             </div>
           </div>
 
-          <div className="pt-4 flex justify-end gap-3">
+          <div className="flex justify-end gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3 text-sm font-bold text-text-muted hover:text-text-primary transition-colors"
+              className="text-text-muted hover:text-text-primary px-6 py-3 text-sm font-bold transition-colors"
             >
               Cancelar
             </button>
-            <button
-              type="submit"
-              className="iterum-button-primary"
-            >
+            <button type="submit" className="iterum-button-primary">
               {objectiveToEdit ? 'Guardar Cambios' : 'Crear Objetivo'}
             </button>
           </div>

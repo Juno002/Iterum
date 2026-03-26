@@ -35,7 +35,13 @@ const FREQUENCIES = [
   { value: 'weekly:Sat,Sun', label: 'Fines de semana' },
 ];
 
-export function TaskModal({ isOpen, onClose, onSave, initialDate = new Date(), taskToEdit }: TaskModalProps) {
+export function TaskModal({
+  isOpen,
+  onClose,
+  onSave,
+  initialDate = new Date(),
+  taskToEdit,
+}: TaskModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dateStr, setDateStr] = useState('');
@@ -101,44 +107,48 @@ export function TaskModal({ isOpen, onClose, onSave, initialDate = new Date(), t
           frequency: habitFrequency,
           type: habitType,
           targetValue: habitTarget,
-          unit: habitUnit
-        }
+          unit: habitUnit,
+        },
       }),
       ...(type === 'objective' && {
         objectiveData: {
           targetValue: objTarget,
           unit: objUnit,
-          deadline: objDeadline ? new Date(objDeadline) : undefined
-        }
-      })
+          deadline: objDeadline ? new Date(objDeadline) : undefined,
+        },
+      }),
     } as any);
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bg-primary/40 dark:bg-black/60 backdrop-blur-md">
-      <div 
-        className="bg-bg-primary dark:bg-[--dark-bg-primary] rounded-[24px] shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-300 border border-border-subtle dark:border-[--dark-border-subtle]"
+    <div className="bg-bg-primary/40 fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md dark:bg-black/60">
+      <div
+        className="bg-bg-primary animate-in fade-in zoom-in-95 border-border-subtle w-full max-w-md overflow-hidden rounded-[24px] border shadow-2xl duration-300 dark:border-[--dark-border-subtle] dark:bg-[--dark-bg-primary]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-8 py-6 border-b border-border-subtle dark:border-[--dark-border-subtle]">
-          <h2 className="text-xl font-bold flex items-center gap-3">
-            <div className="w-10 h-10 bg-accent/10 rounded-[14px] flex items-center justify-center">
-              {ENTITY_TYPES.find(t => t.type === type)?.icon && (
-                React.createElement(ENTITY_TYPES.find(t => t.type === type)!.icon, { className: "w-5 h-5 text-accent" })
-              )}
+        <div className="border-border-subtle flex items-center justify-between border-b px-8 py-6 dark:border-[--dark-border-subtle]">
+          <h2 className="flex items-center gap-3 text-xl font-bold">
+            <div className="bg-accent/10 flex h-10 w-10 items-center justify-center rounded-[14px]">
+              {ENTITY_TYPES.find((t) => t.type === type)?.icon &&
+                React.createElement(ENTITY_TYPES.find((t) => t.type === type)!.icon, {
+                  className: 'w-5 h-5 text-accent',
+                })}
             </div>
-            {taskToEdit ? 'Editar' : 'Capturar'} {ENTITY_TYPES.find(t => t.type === type)?.label}
+            {taskToEdit ? 'Editar' : 'Capturar'} {ENTITY_TYPES.find((t) => t.type === type)?.label}
           </h2>
-          <button 
+          <button
             onClick={onClose}
-            className="p-2 text-text-muted hover:text-accent bg-bg-secondary dark:bg-[--dark-bg-secondary] rounded-[12px] transition-colors"
+            className="text-text-muted hover:text-accent bg-bg-secondary rounded-[12px] p-2 transition-colors dark:bg-[--dark-bg-secondary]"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[75vh] overflow-y-auto iterum-scrollbar">
+        <form
+          onSubmit={handleSubmit}
+          className="iterum-scrollbar max-h-[75vh] space-y-6 overflow-y-auto p-8"
+        >
           {/* Entity Type Selector */}
           <div className="grid grid-cols-4 gap-2">
             {ENTITY_TYPES.map((item) => (
@@ -147,21 +157,30 @@ export function TaskModal({ isOpen, onClose, onSave, initialDate = new Date(), t
                 type="button"
                 onClick={() => setType(item.type)}
                 className={cn(
-                  "flex flex-col items-center gap-2 p-3 rounded-[16px] border transition-all",
-                  type === item.type 
-                    ? "bg-accent/10 border-accent text-accent shadow-sm" 
-                    : "bg-bg-secondary dark:bg-[--dark-bg-secondary] border-border-subtle dark:border-[--dark-border-subtle] text-text-muted opacity-60 hover:opacity-100"
+                  'flex flex-col items-center gap-2 rounded-[16px] border p-3 transition-all',
+                  type === item.type
+                    ? 'bg-accent/10 border-accent text-accent shadow-sm'
+                    : 'bg-bg-secondary border-border-subtle text-text-muted opacity-60 hover:opacity-100 dark:border-[--dark-border-subtle] dark:bg-[--dark-bg-secondary]',
                 )}
               >
-                <item.icon className="w-5 h-5" />
-                <span className="text-[10px] font-bold uppercase tracking-wider">{item.label}</span>
+                <item.icon className="h-5 w-5" />
+                <span className="text-[10px] font-bold tracking-wider uppercase">{item.label}</span>
               </button>
             ))}
           </div>
 
           <div>
-            <label htmlFor="title" className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
-              {type === 'habit' ? 'Nombre del Hábito' : type === 'objective' ? 'Título del Objetivo' : type === 'journal' ? 'Título de la Nota' : 'Título'}
+            <label
+              htmlFor="title"
+              className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase"
+            >
+              {type === 'habit'
+                ? 'Nombre del Hábito'
+                : type === 'objective'
+                  ? 'Título del Objetivo'
+                  : type === 'journal'
+                    ? 'Título de la Nota'
+                    : 'Título'}
             </label>
             <input
               id="title"
@@ -170,23 +189,33 @@ export function TaskModal({ isOpen, onClose, onSave, initialDate = new Date(), t
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="iterum-input w-full text-lg font-semibold"
-              placeholder={type === 'habit' ? 'Ej. Meditar, Correr...' : type === 'objective' ? 'Ej. Maratón 2026' : '¿Qué tienes en mente?'}
+              placeholder={
+                type === 'habit'
+                  ? 'Ej. Meditar, Correr...'
+                  : type === 'objective'
+                    ? 'Ej. Maratón 2026'
+                    : '¿Qué tienes en mente?'
+              }
               autoFocus
             />
           </div>
 
           {type === 'habit' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-top-2">
+            <div className="animate-in fade-in slide-in-from-top-2 space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">Tipo</label>
+                  <label className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase">
+                    Tipo
+                  </label>
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => setHabitType('yesno')}
                       className={cn(
-                        "flex-1 py-2 px-3 rounded-xl border text-[10px] font-bold uppercase tracking-widest transition-all",
-                        habitType === 'yesno' ? "bg-accent text-bg-primary border-accent" : "bg-bg-secondary border-border-subtle text-text-muted"
+                        'flex-1 rounded-xl border px-3 py-2 text-[10px] font-bold tracking-widest uppercase transition-all',
+                        habitType === 'yesno'
+                          ? 'bg-accent text-bg-primary border-accent'
+                          : 'bg-bg-secondary border-border-subtle text-text-muted',
                       )}
                     >
                       Sí/No
@@ -195,8 +224,10 @@ export function TaskModal({ isOpen, onClose, onSave, initialDate = new Date(), t
                       type="button"
                       onClick={() => setHabitType('numeric')}
                       className={cn(
-                        "flex-1 py-2 px-3 rounded-xl border text-[10px] font-bold uppercase tracking-widest transition-all",
-                        habitType === 'numeric' ? "bg-accent text-bg-primary border-accent" : "bg-bg-secondary border-border-subtle text-text-muted"
+                        'flex-1 rounded-xl border px-3 py-2 text-[10px] font-bold tracking-widest uppercase transition-all',
+                        habitType === 'numeric'
+                          ? 'bg-accent text-bg-primary border-accent'
+                          : 'bg-bg-secondary border-border-subtle text-text-muted',
                       )}
                     >
                       Número
@@ -204,21 +235,29 @@ export function TaskModal({ isOpen, onClose, onSave, initialDate = new Date(), t
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">Frecuencia</label>
+                  <label className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase">
+                    Frecuencia
+                  </label>
                   <select
                     value={habitFrequency}
                     onChange={(e) => setHabitFrequency(e.target.value)}
                     className="iterum-input w-full text-xs"
                   >
-                    {FREQUENCIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                    {FREQUENCIES.map((f) => (
+                      <option key={f.value} value={f.value}>
+                        {f.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
 
               {habitType === 'numeric' && (
-                <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
+                <div className="animate-in fade-in slide-in-from-top-2 grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">Meta</label>
+                    <label className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase">
+                      Meta
+                    </label>
                     <input
                       type="number"
                       value={habitTarget}
@@ -227,7 +266,9 @@ export function TaskModal({ isOpen, onClose, onSave, initialDate = new Date(), t
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">Unidad</label>
+                    <label className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase">
+                      Unidad
+                    </label>
                     <input
                       type="text"
                       value={habitUnit}
@@ -242,10 +283,12 @@ export function TaskModal({ isOpen, onClose, onSave, initialDate = new Date(), t
           )}
 
           {type === 'objective' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-top-2">
+            <div className="animate-in fade-in slide-in-from-top-2 space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">Meta</label>
+                  <label className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase">
+                    Meta
+                  </label>
                   <input
                     type="number"
                     value={objTarget}
@@ -254,7 +297,9 @@ export function TaskModal({ isOpen, onClose, onSave, initialDate = new Date(), t
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">Unidad</label>
+                  <label className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase">
+                    Unidad
+                  </label>
                   <input
                     type="text"
                     value={objUnit}
@@ -265,7 +310,9 @@ export function TaskModal({ isOpen, onClose, onSave, initialDate = new Date(), t
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">Fecha Límite</label>
+                <label className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase">
+                  Fecha Límite
+                </label>
                 <input
                   type="date"
                   value={objDeadline}
@@ -279,7 +326,10 @@ export function TaskModal({ isOpen, onClose, onSave, initialDate = new Date(), t
           {type !== 'objective' && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="date" className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
+                <label
+                  htmlFor="date"
+                  className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase"
+                >
                   Fecha
                 </label>
                 <input
@@ -292,7 +342,10 @@ export function TaskModal({ isOpen, onClose, onSave, initialDate = new Date(), t
                 />
               </div>
               <div>
-                <label htmlFor="time" className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
+                <label
+                  htmlFor="time"
+                  className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase"
+                >
                   Hora
                 </label>
                 <input
@@ -308,7 +361,10 @@ export function TaskModal({ isOpen, onClose, onSave, initialDate = new Date(), t
           )}
 
           <div>
-            <label htmlFor="description" className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
+            <label
+              htmlFor="description"
+              className="text-text-muted mb-2 block text-xs font-bold tracking-widest uppercase"
+            >
               {type === 'journal' ? 'Contenido de la Nota' : 'Descripción'}
             </label>
             <textarea
@@ -317,12 +373,14 @@ export function TaskModal({ isOpen, onClose, onSave, initialDate = new Date(), t
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="iterum-input w-full resize-none"
-              placeholder={type === 'journal' ? 'Escribe tus pensamientos...' : 'Añade contexto o detalles...'}
+              placeholder={
+                type === 'journal' ? 'Escribe tus pensamientos...' : 'Añade contexto o detalles...'
+              }
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-3">
+            <label className="text-text-muted mb-3 block text-xs font-bold tracking-widest uppercase">
               Color
             </label>
             <div className="flex items-center gap-3">
@@ -332,8 +390,10 @@ export function TaskModal({ isOpen, onClose, onSave, initialDate = new Date(), t
                   type="button"
                   onClick={() => setColor(c)}
                   className={cn(
-                    "w-7 h-7 rounded-full transition-all border-2",
-                    color === c ? "scale-125 border-text-primary shadow-lg" : "border-transparent hover:scale-110"
+                    'h-7 w-7 rounded-full border-2 transition-all',
+                    color === c
+                      ? 'border-text-primary scale-125 shadow-lg'
+                      : 'border-transparent hover:scale-110',
                   )}
                   style={{ backgroundColor: c }}
                 />
@@ -341,18 +401,15 @@ export function TaskModal({ isOpen, onClose, onSave, initialDate = new Date(), t
             </div>
           </div>
 
-          <div className="pt-4 flex justify-end gap-3">
+          <div className="flex justify-end gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3 text-sm font-bold text-text-muted hover:text-text-primary transition-colors"
+              className="text-text-muted hover:text-text-primary px-6 py-3 text-sm font-bold transition-colors"
             >
               Cancelar
             </button>
-            <button
-              type="submit"
-              className="iterum-button-primary"
-            >
+            <button type="submit" className="iterum-button-primary">
               {taskToEdit ? 'Guardar Cambios' : 'Capturar'}
             </button>
           </div>

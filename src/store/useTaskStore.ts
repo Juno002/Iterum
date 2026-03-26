@@ -36,9 +36,7 @@ export const useTaskStore = create<TaskState>()(
       },
       toggleTask: (id) => {
         set((state) => ({
-          tasks: state.tasks.map((t) =>
-            t.id === id ? { ...t, completed: !t.completed } : t
-          ),
+          tasks: state.tasks.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)),
         }));
       },
       setTasks: (tasks) => set({ tasks }),
@@ -54,6 +52,6 @@ export const useTaskStore = create<TaskState>()(
           }));
         }
       },
-    }
-  )
+    },
+  ),
 );
