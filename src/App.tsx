@@ -36,13 +36,15 @@ export default function App() {
   const [isMigrating, setIsMigrating] = useState(false);
 
   useEffect(() => {
-    supabase?.auth.getSession().then(({ data: { session } }) => {
+    if (!supabase) return;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
 
     const {
       data: { subscription },
-    } = supabase!.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
@@ -348,7 +350,7 @@ export default function App() {
           theme={theme}
           toggleTheme={toggleTheme}
           onSignOut={async () => {
-            await supabase!.auth.signOut();
+            await supabase?.auth.signOut();
             setSession(null);
           }}
           onNewObjective={() => {

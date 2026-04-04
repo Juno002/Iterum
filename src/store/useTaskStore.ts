@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { Task } from '../types';
 import { dbService } from '../services/dbService';
 import { useUserStore } from './useUserStore';
+import { handleSyncError } from '../utils/syncErrors';
 
 interface TaskState {
   tasks: Task[];
@@ -30,7 +31,7 @@ export const useTaskStore = create<TaskState>()(
             })),
           });
         } catch (error) {
-          console.error('Failed to load tasks:', error);
+          handleSyncError(error, 'tasks');
         }
       },
 
@@ -46,7 +47,7 @@ export const useTaskStore = create<TaskState>()(
         set((state) => ({ tasks: [...state.tasks, newTask] }));
 
         if (userId) {
-          dbService.createTask(userId, newTask).catch(console.error);
+          dbService.createTask(userId, newTask).catch((e) => handleSyncError(e, 'tasks'));
         }
       },
 
@@ -57,7 +58,7 @@ export const useTaskStore = create<TaskState>()(
         }));
 
         if (userId) {
-          dbService.updateTask(userId, id, updates).catch(console.error);
+          dbService.updateTask(userId, id, updates).catch((e) => handleSyncError(e, 'tasks'));
         }
       },
 
@@ -68,7 +69,7 @@ export const useTaskStore = create<TaskState>()(
         }));
 
         if (userId) {
-          dbService.deleteTask(userId, id).catch(console.error);
+          dbService.deleteTask(userId, id).catch((e) => handleSyncError(e, 'tasks'));
         }
       },
 
@@ -78,7 +79,7 @@ export const useTaskStore = create<TaskState>()(
           const updatedTasks = state.tasks.map((t) => {
             if (t.id === id) {
               const updated = { ...t, completed: !t.completed };
-              if (userId) dbService.updateTask(userId, id, { completed: !t.completed }).catch(console.error);
+              if (userId) dbService.updateTask(userId, id, { completed: !t.completed }).catch((e) => handleSyncError(e, 'tasks'));
               return updated;
             }
             return t;

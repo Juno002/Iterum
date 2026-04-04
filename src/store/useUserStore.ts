@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { UserStats, DayClosure, WeeklyInsight } from '../types';
 import { dbService } from '../services/dbService';
+import { handleSyncError } from '../utils/syncErrors';
 
 interface UserState {
   userId: string | null;
@@ -58,7 +59,7 @@ export const useUserStore = create<UserState>()(
             });
           }
         } catch (error) {
-          console.error('Failed to load profile:', error);
+          handleSyncError(error, 'profile');
         }
       },
 
@@ -88,7 +89,7 @@ export const useUserStore = create<UserState>()(
         set({ stats: newStats });
 
         if (userId) {
-          dbService.updateProfile(userId, newStats).catch(console.error);
+          dbService.updateProfile(userId, newStats).catch((e) => handleSyncError(e, 'profile'));
         }
       },
 
@@ -97,7 +98,7 @@ export const useUserStore = create<UserState>()(
         const newStats = { ...stats, onboardingCompleted: true };
         set({ stats: newStats });
         if (userId) {
-          dbService.updateProfile(userId, newStats).catch(console.error);
+          dbService.updateProfile(userId, newStats).catch((e) => handleSyncError(e, 'profile'));
         }
       },
 

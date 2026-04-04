@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { Objective } from '../types';
 import { dbService } from '../services/dbService';
 import { useUserStore } from './useUserStore';
+import { handleSyncError } from '../utils/syncErrors';
 
 interface ObjectiveState {
   objectives: Objective[];
@@ -34,7 +35,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
             })),
           });
         } catch (error) {
-          console.error('Failed to load objectives:', error);
+          handleSyncError(error, 'objectives');
         }
       },
 
@@ -49,7 +50,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
         set((state) => ({ objectives: [...state.objectives, newObjective] }));
 
         if (userId) {
-          dbService.createObjective(userId, newObjective).catch(console.error);
+          dbService.createObjective(userId, newObjective).catch((e) => handleSyncError(e, 'objectives'));
         }
       },
 

@@ -18,18 +18,22 @@ export function Auth({ onSuccess }: AuthProps) {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) {
+      setError('Supabase no está configurado. Verifica tu archivo .env');
+      return;
+    }
     setLoading(true);
     setError(null);
 
     try {
       if (isLogin) {
-        const { error } = await supabase!.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
       } else {
-        const { error } = await supabase!.auth.signUp({
+        const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -39,27 +43,30 @@ export function Auth({ onSuccess }: AuthProps) {
           },
         });
         if (error) throw error;
-        setError('Check your email for the confirmation link!');
       }
       if (isLogin && onSuccess) onSuccess();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setLoading(false);
     }
   };
 
   const handleSocialLogin = async (provider: 'google' | 'github') => {
+    if (!supabase) {
+      setError('Supabase no está configurado. Verifica tu archivo .env');
+      return;
+    }
     try {
-      const { error } = await supabase!.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo: window.location.origin,
         },
       });
       if (error) throw error;
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
     }
   };
 

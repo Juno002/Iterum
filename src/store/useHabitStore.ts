@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { Habit, HabitLog } from '../types';
 import { dbService } from '../services/dbService';
 import { useUserStore } from './useUserStore';
+import { handleSyncError } from '../utils/syncErrors';
 
 interface HabitState {
   habits: Habit[];
@@ -29,7 +30,7 @@ export const useHabitStore = create<HabitState>()(
           const habits = await dbService.getHabits(userId);
           set({ habits: habits.map((h: any) => ({ ...h, createdAt: new Date(h.created_at) })) });
         } catch (error) {
-          console.error('Failed to load habits:', error);
+          handleSyncError(error, 'habits');
         }
       },
 
@@ -38,7 +39,7 @@ export const useHabitStore = create<HabitState>()(
           const logs = await dbService.getHabitLogs(userId);
           set({ logs: logs.map((l: any) => ({ ...l, createdAt: new Date(l.created_at) })) });
         } catch (error) {
-          console.error('Failed to load logs:', error);
+          handleSyncError(error, 'habit_logs');
         }
       },
 
@@ -54,7 +55,7 @@ export const useHabitStore = create<HabitState>()(
         set((state) => ({ habits: [...state.habits, newHabit] }));
 
         if (userId) {
-          dbService.createHabit(userId, habitData).catch(console.error);
+          dbService.createHabit(userId, habitData).catch((e) => handleSyncError(e, 'habits'));
         }
       },
 
@@ -65,7 +66,7 @@ export const useHabitStore = create<HabitState>()(
         }));
 
         if (userId) {
-          dbService.updateHabit(userId, id, updates).catch(console.error);
+          dbService.updateHabit(userId, id, updates).catch((e) => handleSyncError(e, 'habits'));
         }
       },
 
@@ -77,7 +78,7 @@ export const useHabitStore = create<HabitState>()(
         }));
 
         if (userId) {
-          dbService.deleteHabit(userId, id).catch(console.error);
+          dbService.deleteHabit(userId, id).catch((e) => handleSyncError(e, 'habits'));
         }
       },
 
@@ -89,7 +90,7 @@ export const useHabitStore = create<HabitState>()(
           const existingLog = state.logs.find((l) => l.habitId === habitId && l.date === dateStr);
           if (existingLog) {
             if (existingLog.completed && !value && !note) {
-              if (userId) dbService.deleteHabitLog(userId, existingLog.id).catch(console.error);
+              if (userId) dbService.deleteHabitLog(userId, existingLog.id).catch((e) => handleSyncError(e, 'habit_logs'));
               return { logs: state.logs.filter((l) => l.id !== existingLog.id) };
             } else {
               const updatedLog = {
@@ -98,7 +99,7 @@ export const useHabitStore = create<HabitState>()(
                 value: value ?? existingLog.value,
                 note: note ?? existingLog.note,
               };
-              if (userId) dbService.upsertHabitLog(userId, updatedLog).catch(console.error);
+              if (userId) dbService.upsertHabitLog(userId, updatedLog).catch((e) => handleSyncError(e, 'habit_logs'));
               return {
                 logs: state.logs.map((l) => (l.id === existingLog.id ? updatedLog : l)),
               };
@@ -113,7 +114,7 @@ export const useHabitStore = create<HabitState>()(
               note,
               createdAt: new Date(),
             };
-            if (userId) dbService.upsertHabitLog(userId, newLog).catch(console.error);
+            if (userId) dbService.upsertHabitLog(userId, newLog).catch((e) => handleSyncError(e, 'habit_logs'));
             return { logs: [...state.logs, newLog] };
           }
         });
