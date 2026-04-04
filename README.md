@@ -12,20 +12,22 @@ Iterum no es solo otra aplicación de lista de tareas. Es un sistema de forja pe
 
 ## ✨ Características Principales
 
-- **Gestión de Hábitos:** Seguimiento cuantitativo y cualitativo de tus rutinas diarias.
-- **Objetivos y Hitos:** Define metas a largo plazo y divídelas en pasos accionables.
-- **Diario de Reflexión:** Espacio para la introspección y el registro de lecciones aprendidas.
-- **Modo Foco:** Una interfaz minimalista para eliminar distracciones durante la ejecución (Nivel 5+).
-- **Gamificación:** Sistema de EXP y niveles (Disciplina y Consistencia) para medir tu evolución.
-- **Privacidad Primero:** Tus datos son tuyos. Exportación local y sincronización cifrada.
+- **Arquitectura Local-First:** Inicia sin cuenta usando `localStorage`. Experimenta cero latencia al interactuar y, al registrarte, sincroniza todo transparentemente a la nube.
+- **Sincronización en Tiempo Real:** Integración completa con Supabase (Auth & Database). Tus datos te acompañan en todos tus dispositivos con un modelo de datos robusto y políticas RLS *(Row Level Security)*.
+- **Jugo Sensorial (Sensory UX):** La app recompensa cada acción positiva con un motor de feedback propio (sonidos sintetizados vía Web Audio API, animaciones interactivas usando Framer Motion, micro haptics y explosiones de confetti) optimizado para no sumar un solo KB de dependencias innecesarias.
+- **Gestión de Hábitos:** Seguimiento cuantitativo y cualitativo de tus rutinas diarias con sistema de rachas (streaks) y recordatorios predictivos.
+- **Objetivos y Hitos:** Define metas a largo plazo y divídelas en pasos accionables, acumulando progresión de forma gamificada.
+- **Modo Foco:** Interfaz inmersiva para bloquear distracciones durante la ejecución de las tareas críticas.
+- **Diario y Cierre de Día:** Espacio para la introspección nocturna guiada.
 
-## 🛠️ Tech Stack
+## 🛠️ Tech Stack & Ingeniería
 
-- **Core:** React 19 + TypeScript + Vite
-- **Styling:** Tailwind CSS 4 + Lucide Icons
-- **State:** Zustand (Store modular)
-- **Persistencia:** Supabase (Phase 2) / Local Storage (Actual)
-- **Calidad:** ESLint 9 + Prettier + Husky + lint-staged
+- **Frontend:** React 19 + TypeScript + Vite 6
+- **Animaciones y Estilos:** Tailwind CSS 4 + Lucide Icons + Framer Motion
+- **Estado Global:** Zustand (Stores segmentados para hábitos, tareas y objetivos + persistence middleware)
+- **Backend & DB:** Supabase (PostgreSQL, Auth, RLS)
+- **Confiabilidad:** ErrorBoundaries globales, Null-safety stricto para Supabase checks, Toasts centralizados para sincronización.
+- **DevOps y QA:** ESLint 9 + Prettier + Vitest + Husky. Despliegue en Vercel con integración continua.
 
 ## 💻 Desarrollo Local
 
@@ -36,7 +38,7 @@ Iterum no es solo otra aplicación de lista de tareas. Es un sistema de forja pe
 ### Pasos
 1. **Clonar el repositorio:**
    ```bash
-   git clone https://github.com/Junior/ITERUM.git
+   git clone https://github.com/Juno002/ITERUM.git
    cd ITERUM
    ```
 
@@ -45,33 +47,41 @@ Iterum no es solo otra aplicación de lista de tareas. Es un sistema de forja pe
    npm install
    ```
 
-3. **Ejecutar en desarrollo:**
+3. **Configurar el Entorno:**
+   Crea un archivo `.env` en la raíz copiando `.env.example` y añade tus claves de Supabase.
+   ```bash
+   VITE_SUPABASE_URL=tu_supabase_url
+   VITE_SUPABASE_ANON_KEY=tu_supabase_anon_key
+   ```
+
+4. **Ejecutar en desarrollo:**
    ```bash
    npm run dev
    ```
 
-4. **Verificar calidad de código:**
-   ```bash
-   npm run lint   # Ejecutar linter
-   npm run format # Aplicar formato Prettier
-   ```
-
 ## 🗺️ Roadmap de Evolución
 
-### Fase 1: Cimientos y Estándares (Completada ✅)
+### ✅ Fase 1: Cimientos y Estándares
 - Refactorización de componentes monolíticos.
-- Implementación de estándares de código (ESLint, Prettier).
-- Eliminación de dependencias experimentales y limpieza de UI.
+- Implementación de estándares de código.
+- Limpieza masiva de dependencias.
 
-### Fase 2: Seguridad y Persistencia (En Progreso 🏗️)
-- Integración de Supabase Auth.
-- Modelo de datos relacional robusto.
-- Row Level Security (RLS) para proteger datos de usuario.
+### ✅ Fase 2: Seguridad y Sincronización
+- Integración full stack de Supabase (Auth + PostgreSQL).
+- Migración automatizada `Local Storage -> Nube`.
+- Row Level Security en la base de datos.
 
-### Fase 3: Fiabilidad y Resiliencia
-- Cobertura de tests unitarios y de integración.
-- Manejo global de errores y logging profesional.
-- Optimización de rendimiento y PWA.
+### ✅ Fase 3: Fiabilidad y Resiliencia
+- `ErrorBoundary` global para eliminar blank-screens.
+- Refactor total para validación *null-safe* del cliente Supabase.
+- Interfaz gráfica estandarizada (Toasts) para gestión de errores de red y sync.
+- Setup de `Vitest` con primera batería de unit testing en core utilities.
+
+### ✅ Fase 4: "El Jugo Sensorial" (UX Elevada)
+- Desarrollo de API de feedback táctil, auditiva y visual (`feedback.ts`).
+- Sonido 100% sintetizado (0 archivos pesados introducidos).
+- Confetti renderizado sobre Canvas en celebraciones de rachas o 'Level Ups'.
+- Animaciones interactivas ("spring pops" de Framer Motion) respondiendo al swipe/completado.
 
 ---
 
