@@ -60,6 +60,7 @@ export type Task = {
   completed: boolean;
   color?: string;
   createdAt: Date;
+  migrated?: boolean;
   // Journal specific
   content?: string;
   tags?: string[];

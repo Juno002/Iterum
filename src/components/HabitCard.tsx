@@ -12,6 +12,7 @@ import { Habit, HabitLog } from '../types';
 import { cn } from '../utils';
 import { calculateCurrentStreak } from '../utils/habitUtils';
 import { motion, AnimatePresence } from 'motion/react';
+import { feedback } from '../utils/feedback';
 
 interface HabitCardProps {
   habit: Habit;
@@ -32,14 +33,37 @@ export const HabitCard: React.FC<HabitCardProps> = ({
 }) => {
   const [isReflecting, setIsReflecting] = useState(false);
   const [note, setNote] = useState('');
+  const [justCompleted, setJustCompleted] = useState(false);
 
   const streak = calculateCurrentStreak(logs, habit);
   const todayStr = new Date().toISOString().split('T')[0];
   const currentLog = logs.find((l) => l.habitId === habit.id && l.date === todayStr);
   const isCompletedToday = currentLog?.completed || false;
 
+  const handleToggle = () => {
+    if (!isCompletedToday) {
+      // Completing — play success
+      feedback.success();
+      setJustCompleted(true);
+      setTimeout(() => setJustCompleted(false), 600);
+
+      // Check for streak milestones
+      const nextStreak = streak + 1;
+      if ([7, 14, 30, 60, 100].includes(nextStreak)) {
+        setTimeout(() => feedback.celebrate(), 400);
+      } else if (nextStreak >= 3 && nextStreak % 3 === 0) {
+        setTimeout(() => feedback.streak(), 300);
+      }
+    } else {
+      // Uncompleting — play undo
+      feedback.undo();
+    }
+    onToggle(habit.id);
+  };
+
   const handleSaveNote = () => {
     if (onAddNote) {
+      feedback.tap();
       onAddNote(habit.id, note);
       setIsReflecting(false);
     }
@@ -53,35 +77,60 @@ export const HabitCard: React.FC<HabitCardProps> = ({
 
   if (compact) {
     return (
-      <div className="iterum-card flex items-center justify-between border-none p-4 transition-all hover:translate-x-1">
+      <motion.div
+        initial={{ opacity: 0, x: -10 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="iterum-card flex items-center justify-between border-none p-4 transition-all hover:translate-x-1"
+      >
         <div className="flex items-center gap-4">
-          <button onClick={() => onToggle(habit.id)} className="flex-shrink-0">
+          <motion.button
+            onClick={handleToggle}
+            className="flex-shrink-0"
+            whileTap={{ scale: 0.85 }}
+          >
             {isCompletedToday ? (
-              <div className="bg-accent shadow-accent/20 flex h-8 w-8 items-center justify-center rounded-full shadow-lg">
+              <motion.div
+                className="bg-accent shadow-accent/20 flex h-8 w-8 items-center justify-center rounded-full shadow-lg"
+                initial={justCompleted ? { scale: 0 } : { scale: 1 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+              >
                 <CheckCircle2 className="text-bg-primary h-5 w-5" />
-              </div>
+              </motion.div>
             ) : (
               <div className="border-border-subtle hover:border-accent h-8 w-8 rounded-full border-2 transition-colors" />
             )}
-          </button>
+          </motion.button>
           <div>
             <h4
               className={cn(
-                'text-sm font-bold',
+                'text-sm font-bold transition-all duration-300',
                 isCompletedToday && 'text-text-muted line-through',
               )}
             >
               {habit.name}
             </h4>
             <div className="text-text-muted flex items-center gap-2 text-[10px] font-bold tracking-wider uppercase">
-              <Flame className={cn('h-3 w-3', streak > 0 ? 'text-accent' : 'text-text-muted')} />
+              <motion.div
+                animate={
+                  streak > 3
+                    ? { scale: [1, 1.3, 1], rotate: [0, -10, 10, 0] }
+                    : {}
+                }
+                transition={{ duration: 0.5, repeat: streak > 7 ? Infinity : 0, repeatDelay: 3 }}
+              >
+                <Flame className={cn('h-3 w-3', streak > 0 ? 'text-accent' : 'text-text-muted')} />
+              </motion.div>
               {streak} días
             </div>
           </div>
         </div>
         {isCompletedToday && onAddNote && (
           <button
-            onClick={() => setIsReflecting(!isReflecting)}
+            onClick={() => {
+              feedback.tap();
+              setIsReflecting(!isReflecting);
+            }}
             className={cn(
               'rounded-full p-2 transition-colors',
               currentLog?.note ? 'text-accent bg-accent/10' : 'text-text-muted hover:text-accent',
@@ -90,15 +139,30 @@ export const HabitCard: React.FC<HabitCardProps> = ({
             <MessageSquare className="h-4 w-4" />
           </button>
         )}
-      </div>
+      </motion.div>
     );
   }
 
   return (
     <motion.div
       layout
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
       className="iterum-card group relative flex flex-col gap-4 overflow-hidden p-6"
     >
+      {/* Completion pulse ring */}
+      <AnimatePresence>
+        {justCompleted && (
+          <motion.div
+            className="bg-accent/10 absolute inset-0 rounded-[32px]"
+            initial={{ opacity: 0.6, scale: 0.8 }}
+            animate={{ opacity: 0, scale: 1.05 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+          />
+        )}
+      </AnimatePresence>
+
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -117,7 +181,10 @@ export const HabitCard: React.FC<HabitCardProps> = ({
         <div className="flex items-center gap-2">
           {isCompletedToday && (
             <button
-              onClick={() => setIsReflecting(!isReflecting)}
+              onClick={() => {
+                feedback.tap();
+                setIsReflecting(!isReflecting);
+              }}
               className={cn(
                 'rounded-full p-2 transition-all',
                 currentLog?.note
@@ -129,7 +196,10 @@ export const HabitCard: React.FC<HabitCardProps> = ({
             </button>
           )}
           <button
-            onClick={() => onEdit(habit)}
+            onClick={() => {
+              feedback.tap();
+              onEdit(habit);
+            }}
             className="text-text-muted hover:text-accent p-2 opacity-0 transition-all group-hover:opacity-100"
           >
             <Edit2 className="h-4 w-4" />
@@ -169,15 +239,40 @@ export const HabitCard: React.FC<HabitCardProps> = ({
 
       <div className="mt-2 flex items-end justify-between">
         <div className="flex items-center gap-3">
-          <div
+          <motion.div
             className={cn(
               'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold tracking-wider uppercase',
               streak > 0 ? 'bg-accent/10 text-accent' : 'bg-bg-secondary text-text-muted',
             )}
+            animate={
+              streak >= 7
+                ? {
+                    boxShadow: [
+                      '0 0 0px rgba(200,149,108,0)',
+                      '0 0 12px rgba(200,149,108,0.4)',
+                      '0 0 0px rgba(200,149,108,0)',
+                    ],
+                  }
+                : {}
+            }
+            transition={{ duration: 2, repeat: Infinity }}
           >
-            <Flame className="h-4 w-4" />
+            <motion.div
+              animate={
+                streak > 3
+                  ? { scale: [1, 1.3, 1], rotate: [0, -10, 10, 0] }
+                  : {}
+              }
+              transition={{
+                duration: 0.6,
+                repeat: streak > 7 ? Infinity : 0,
+                repeatDelay: 2,
+              }}
+            >
+              <Flame className="h-4 w-4" />
+            </motion.div>
             {streak} días racha
-          </div>
+          </motion.div>
 
           <div className="bg-bg-secondary text-text-muted flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold tracking-wider uppercase">
             <Target className="h-4 w-4" />
@@ -185,8 +280,9 @@ export const HabitCard: React.FC<HabitCardProps> = ({
           </div>
         </div>
 
-        <button
-          onClick={() => onToggle(habit.id)}
+        <motion.button
+          onClick={handleToggle}
+          whileTap={{ scale: 0.9 }}
           className={cn(
             'flex h-14 w-14 items-center justify-center rounded-2xl shadow-xl transition-all duration-500',
             isCompletedToday
@@ -195,19 +291,27 @@ export const HabitCard: React.FC<HabitCardProps> = ({
           )}
         >
           {isCompletedToday ? (
-            <CheckCircle2 className="h-8 w-8" />
+            <motion.div
+              initial={justCompleted ? { scale: 0, rotate: -180 } : false}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 12 }}
+            >
+              <CheckCircle2 className="h-8 w-8" />
+            </motion.div>
           ) : (
             <div className="h-6 w-6 rounded-full border-2 border-current" />
           )}
-        </button>
+        </motion.button>
       </div>
 
-      {/* Progress Bar for Numeric Habits (Optional Visual) */}
+      {/* Progress Bar for Numeric Habits */}
       {habit.type === 'numeric' && (
         <div className="bg-bg-secondary mt-2 h-1.5 w-full overflow-hidden rounded-full">
-          <div
-            className="bg-accent h-full transition-all duration-1000"
-            style={{ width: isCompletedToday ? '100%' : '0%' }}
+          <motion.div
+            className="bg-accent h-full"
+            initial={{ width: '0%' }}
+            animate={{ width: isCompletedToday ? '100%' : '0%' }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
           />
         </div>
       )}

@@ -20,8 +20,8 @@ import { ObjectiveModal } from './components/ObjectiveModal';
 import { CloseDayModal } from './components/CloseDayModal';
 import { OnboardingWizard } from './components/OnboardingWizard';
 import { Toast } from './components/Toast';
-import confetti from 'canvas-confetti';
-import { soundManager } from './utils/sounds';
+import { Confetti } from './components/Confetti';
+import { feedback } from './utils/feedback';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { ViewHeader } from './components/ViewHeader';
@@ -63,13 +63,7 @@ export default function App() {
   const { theme, toggleTheme } = useTheme();
 
   const handleLevelUp = (level: number) => {
-    soundManager.playSuccess();
-    confetti({
-      particleCount: 150,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: ['#F27D26', '#E6E6E6', '#141414'],
-    });
+    feedback.celebrate();
     setToast({
       isOpen: true,
       title: '¡Nivel Completado!',
@@ -164,7 +158,7 @@ export default function App() {
     const milestone = objective.milestones.find((m) => m.id === milestoneId);
     if (milestone && !milestone.completed) {
       addExp(25, 'discipline');
-      soundManager.playSuccess();
+      feedback.celebrate();
       setToast({
         isOpen: true,
         title: '¡Hito Alcanzado!',
@@ -180,7 +174,7 @@ export default function App() {
     // Award EXP for first check-in or note
     if (!existingLog) {
       addExp(10, 'discipline');
-      soundManager.playPop();
+      feedback.success();
     } else if (note && !existingLog.note) {
       addExp(8, 'consistency');
     }
@@ -468,6 +462,8 @@ export default function App() {
       </div>
 
       {!stats.onboardingCompleted && <OnboardingWizard onComplete={completeOnboarding} />}
+
+      <Confetti />
 
       <Toast
         isOpen={toast.isOpen}
