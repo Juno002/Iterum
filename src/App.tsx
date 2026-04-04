@@ -26,6 +26,9 @@ import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { ViewHeader } from './components/ViewHeader';
 import { ViewManager } from './components/ViewManager';
+import { Atrium } from './components/Atrium';
+import { FocusChamber } from './components/FocusChamber';
+import { CeremonyChamber } from './components/CeremonyChamber';
 import { useUserStore } from './store/useUserStore';
 import { Session } from '@supabase/supabase-js';
 import { migrationService } from './services/migrationService';
@@ -54,8 +57,9 @@ export default function App() {
   const {
     viewMode,
     setViewMode,
-    isFocusMode,
-    setIsFocusMode,
+    focusState,
+    focusedTaskId,
+    setFocusState,
     toast,
     setToast,
     closeToast,
@@ -326,16 +330,23 @@ export default function App() {
     <div
       className={cn(
         'bg-bg-primary text-text-primary min-h-screen font-sans transition-all duration-700 dark:bg-[--dark-bg-primary] dark:text-[--dark-text-primary]',
-        isFocusMode && 'bg-black text-white/90',
       )}
     >
-      {/* Focus Mode Overlay */}
-      {isFocusMode && (
-        <div className="pointer-events-none fixed inset-0 z-[100] bg-black opacity-40 mix-blend-multiply" />
-      )}
+      {/* Focus Mode - The Deep Work Chamber */}
+      <FocusChamber 
+        task={tasks.find(t => t.id === focusedTaskId) || undefined} 
+        onComplete={(id) => {
+          toggleTask(id);
+          // Auto-return to idle after exit animation completes
+          setTimeout(() => setFocusState('idle'), 1200);
+        }} 
+      />
 
-      {/* Header */}
-      {!isFocusMode && (
+      {/* End of Day Ritual - The Ceremony */}
+      <CeremonyChamber />
+
+      {/* Header - Hidden in Atrium / Today mode */}
+      {viewMode !== 'today' && (
         <Header
           viewMode={viewMode}
           setViewMode={setViewMode}
@@ -360,62 +371,80 @@ export default function App() {
       )}
 
       {/* Main Content */}
-      <main className="mx-auto max-w-6xl px-6 py-10">
-        <div className="flex flex-col gap-10">
-          {/* View Header */}
-          <ViewHeader
-            viewMode={viewMode}
-            streak={streak}
-            isDayClosed={isDayClosed}
-            handleOpenCloseDayModal={handleOpenCloseDayModal}
-            filteredTasks={filteredTasks}
-            closedDays={closedDays}
-            setIsObjectiveModalOpen={setIsObjectiveModalOpen}
-            setObjectiveToEdit={setObjectiveToEdit}
+      <main className={cn(
+        "mx-auto w-full transition-all duration-700",
+        viewMode === 'today' ? "pt-0 px-0 max-w-none" : "max-w-6xl px-6 py-10"
+      )}>
+        {viewMode === 'today' ? (
+          <Atrium 
+            tasks={filteredTasks}
+            habits={todayHabits}
+            streak={calculateStreak()}
+            onNewTask={() => {
+              setSelectedDate(new Date());
+              setTaskToEdit(undefined);
+              setIsTaskModalOpen(true);
+            }}
+            onTaskSelect={(task) => {
+              setTaskToEdit(task);
+              setIsTaskModalOpen(true);
+            }}
           />
-
-          {/* Dynamic View Rendering */}
-          <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
-            <ViewManager
+        ) : (
+          <div className="flex flex-col gap-10">
+            <ViewHeader
               viewMode={viewMode}
-              filteredHabits={filteredHabits}
-              filteredObjectives={filteredObjectives}
+              streak={streak}
+              isDayClosed={isDayClosed}
+              handleOpenCloseDayModal={handleOpenCloseDayModal}
               filteredTasks={filteredTasks}
-              todayHabits={todayHabits}
-              habits={habits}
-              logs={logs}
-              tasks={tasks}
-              weeklyInsights={weeklyInsights}
-              stats={stats}
-              toggleHabitLog={toggleHabitLog}
-              handleEditHabit={handleEditHabit}
-              handleEditObjective={handleEditObjective}
-              handleToggleMilestone={handleToggleMilestone}
-              handleEditTask={handleEditTask}
-              toggleTask={toggleTask}
-              deleteTask={deleteTask}
-              handleDateSelect={handleDateSelect}
+              closedDays={closedDays}
+              setIsObjectiveModalOpen={setIsObjectiveModalOpen}
+              setObjectiveToEdit={setObjectiveToEdit}
             />
 
-            <Sidebar
-              stats={stats}
-              objectivesWithProgress={objectivesWithProgress}
-              objectives={objectives}
-              setViewMode={setViewMode}
-              isFocusMode={isFocusMode}
-              setIsFocusMode={setIsFocusMode}
-              isSyncing={isSyncing}
-              isRestoring={isRestoring}
-              handleSync={handleSync}
-              handleRestore={handleRestore}
-              habits={habits}
-              logs={logs}
-              tasks={tasks}
-              closedDays={closedDays}
-              weeklyInsights={weeklyInsights}
-            />
+            <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
+              <ViewManager
+                viewMode={viewMode}
+                filteredHabits={filteredHabits}
+                filteredObjectives={filteredObjectives}
+                filteredTasks={filteredTasks}
+                todayHabits={todayHabits}
+                habits={habits}
+                logs={logs}
+                tasks={tasks}
+                weeklyInsights={weeklyInsights}
+                stats={stats}
+                toggleHabitLog={toggleHabitLog}
+                handleEditHabit={handleEditHabit}
+                handleEditObjective={handleEditObjective}
+                handleToggleMilestone={handleToggleMilestone}
+                handleEditTask={handleEditTask}
+                toggleTask={toggleTask}
+                deleteTask={deleteTask}
+                handleDateSelect={handleDateSelect}
+              />
+
+              <Sidebar
+                stats={stats}
+                objectivesWithProgress={objectivesWithProgress}
+                objectives={objectives}
+                setViewMode={setViewMode}
+                isFocusMode={false}
+                setIsFocusMode={() => {}}
+                isSyncing={isSyncing}
+                isRestoring={isRestoring}
+                handleSync={handleSync}
+                handleRestore={handleRestore}
+                habits={habits}
+                logs={logs}
+                tasks={tasks}
+                closedDays={closedDays}
+                weeklyInsights={weeklyInsights}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </main>
 
       {/* Modals */}
@@ -447,19 +476,21 @@ export default function App() {
         onConfirm={handleConfirmCloseDay}
       />
 
-      {/* Mobile FAB */}
-      <div className="fixed right-6 bottom-8 z-40 sm:hidden">
-        <button
-          onClick={() => {
-            setSelectedDate(new Date());
-            setTaskToEdit(undefined);
-            setIsTaskModalOpen(true);
-          }}
-          className="bg-accent text-bg-primary flex h-16 w-16 items-center justify-center rounded-full shadow-2xl transition-transform active:scale-90"
-        >
-          <Plus className="h-8 w-8" />
-        </button>
-      </div>
+      {/* Mobile FAB - Handled by Atrium for today view */}
+      {viewMode !== 'today' && (
+        <div className="fixed right-6 bottom-8 z-40 sm:hidden">
+          <button
+            onClick={() => {
+              setSelectedDate(new Date());
+              setTaskToEdit(undefined);
+              setIsTaskModalOpen(true);
+            }}
+            className="bg-accent text-bg-primary flex h-16 w-16 items-center justify-center rounded-full shadow-2xl transition-transform active:scale-90"
+          >
+            <Plus className="h-8 w-8" />
+          </button>
+        </div>
+      )}
 
       {!stats.onboardingCompleted && <OnboardingWizard onComplete={completeOnboarding} />}
 
