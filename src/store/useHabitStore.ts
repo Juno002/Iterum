@@ -28,7 +28,7 @@ export const useHabitStore = create<HabitState>()(
       loadHabits: async (userId) => {
         try {
           const habits = await dbService.getHabits(userId);
-          set({ habits: habits.map((h: any) => ({ ...h, createdAt: new Date(h.created_at) })) });
+          set({ habits });
         } catch (error) {
           handleSyncError(error, 'habits');
         }
@@ -37,7 +37,7 @@ export const useHabitStore = create<HabitState>()(
       loadLogs: async (userId) => {
         try {
           const logs = await dbService.getHabitLogs(userId);
-          set({ logs: logs.map((l: any) => ({ ...l, createdAt: new Date(l.created_at) })) });
+          set({ logs });
         } catch (error) {
           handleSyncError(error, 'habit_logs');
         }

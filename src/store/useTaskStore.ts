@@ -23,13 +23,7 @@ export const useTaskStore = create<TaskState>()(
       loadTasks: async (userId) => {
         try {
           const tasks = await dbService.getTasks(userId);
-          set({
-            tasks: tasks.map((t: any) => ({
-              ...t,
-              date: new Date(t.date),
-              createdAt: new Date(t.created_at),
-            })),
-          });
+          set({ tasks });
         } catch (error) {
           handleSyncError(error, 'tasks');
         }

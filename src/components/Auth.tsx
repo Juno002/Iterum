@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
-import { Mail, Lock, User, Github, Chrome, ArrowRight, Loader2, Info } from 'lucide-react';
+import { Mail, Lock, User, Github, Chrome, ArrowRight, Loader2, Info, X } from 'lucide-react';
 import { cn } from '../utils';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface AuthProps {
   onSuccess?: () => void;
+  onClose?: () => void;
 }
 
-export function Auth({ onSuccess }: AuthProps) {
+export function Auth({ onSuccess, onClose }: AuthProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +45,7 @@ export function Auth({ onSuccess }: AuthProps) {
         });
         if (error) throw error;
       }
-      if (isLogin && onSuccess) onSuccess();
+      onSuccess?.();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
@@ -78,6 +79,18 @@ export function Auth({ onSuccess }: AuthProps) {
         className="bg-bg-primary/80 border-border-subtle w-full max-w-md overflow-hidden rounded-[40px] border shadow-2xl backdrop-blur-2xl dark:border-[--dark-border-subtle] dark:bg-[--dark-bg-primary]/80"
       >
         <div className="p-10">
+          {onClose && (
+            <div className="mb-6 flex justify-end">
+              <button
+                onClick={onClose}
+                className="text-text-muted hover:text-text-primary bg-bg-secondary border-border-subtle rounded-full border p-2 transition-all dark:border-[--dark-border-subtle] dark:bg-[--dark-bg-secondary]"
+                title="Cerrar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
           <div className="mb-10 text-center">
             <div className="bg-accent mb-6 inline-flex h-16 w-16 items-center justify-center rounded-[24px] shadow-2xl shadow-accent/20">
               <User className="text-bg-primary h-8 w-8" />
@@ -215,6 +228,14 @@ export function Auth({ onSuccess }: AuthProps) {
             >
               {isLogin ? '¿No tienes cuenta? Registrate' : '¿Ya tienes cuenta? Entra'}
             </button>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="text-text-muted hover:text-text-primary mt-4 block w-full text-[10px] font-bold tracking-widest uppercase transition-colors"
+              >
+                Seguir sin cuenta
+              </button>
+            )}
           </div>
         </div>
       </motion.div>

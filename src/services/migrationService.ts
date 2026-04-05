@@ -18,6 +18,7 @@ function safeDate(val: unknown): Date | undefined {
 export const migrationService = {
   async migrateLocalToCloud(userId: string) {
     console.log('Starting migration for user:', userId);
+    const habitIdMap = new Map<string, string>();
 
     // 1. Migrate Profile & Stats
     const userStorage = localStorage.getItem('iterum_user_storage');
@@ -37,6 +38,7 @@ export const migrationService = {
         for (const habit of state.habits) {
           const { id, createdAt, ...habitData } = habit;
           const newHabit = await dbService.createHabit(userId, habitData);
+          habitIdMap.set(id, newHabit.id);
           
           // Migrate logs for this habit
           if (state.logs) {
@@ -58,7 +60,12 @@ export const migrationService = {
       if (state.tasks && state.tasks.length > 0) {
         for (const task of state.tasks) {
           const { id, createdAt, ...taskData } = task;
-          await dbService.createTask(userId, taskData);
+          // Ensure date is a Date object
+          const sanitizedTask = {
+            ...taskData,
+            date: safeDate(taskData.date) || new Date(),
+          };
+          await dbService.createTask(userId, sanitizedTask);
         }
         console.log('Tasks migrated');
       }
@@ -79,6 +86,7 @@ export const migrationService = {
           } = objective;
           const objData = {
             ...rest,
+            linkedHabitId: rest.linkedHabitId ? habitIdMap.get(rest.linkedHabitId) : undefined,
             deadline: safeDate(rest.deadline),
           };
           try {

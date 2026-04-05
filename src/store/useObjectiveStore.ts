@@ -35,7 +35,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
       set({ isLoading: true, error: null });
       const user = (await supabase?.auth.getUser())?.data.user;
       if (!user) {
-        set({ objectives: [], isLoading: false });
+        set({ isLoading: false });
         return;
       }
       
@@ -107,9 +107,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
   addObjective: async (objectiveData) => {
     try {
       const user = (await supabase?.auth.getUser())?.data.user;
-      if (!user) throw new Error("User not authenticated");
 
-      // Optimistic update for UI
       const tempId = crypto.randomUUID();
       const optimisticObjective: Objective = {
         ...objectiveData,
@@ -127,7 +125,10 @@ export const useObjectiveStore = create<ObjectiveState>()(
         objectives: [optimisticObjective, ...state.objectives]
       }));
 
-      // Background Encryption & Sync
+      if (!user) {
+        return;
+      }
+
       const payloadToSync = { ...objectiveData };
       const key = await getEncryptionKey();
       
@@ -156,14 +157,16 @@ export const useObjectiveStore = create<ObjectiveState>()(
   updateObjective: async (id, updates) => {
     try {
       const user = (await supabase?.auth.getUser())?.data.user;
-      if (!user) return;
 
-      // Optimistic update
       set((state) => ({
         objectives: state.objectives.map((obj) => 
           obj.id === id ? { ...obj, ...updates } : obj
         )
       }));
+
+      if (!user) {
+        return;
+      }
 
       const payloadToSync = { ...updates };
       const key = await getEncryptionKey();
@@ -188,11 +191,14 @@ export const useObjectiveStore = create<ObjectiveState>()(
   deleteObjective: async (id) => {
     try {
       const user = (await supabase?.auth.getUser())?.data.user;
-      if (!user) return;
 
       set((state) => ({
         objectives: state.objectives.filter(obj => obj.id !== id)
       }));
+
+      if (!user) {
+        return;
+      }
 
       await dbService.deleteObjective(user.id, id);
     } catch (error: unknown) {

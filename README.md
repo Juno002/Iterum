@@ -12,8 +12,9 @@ Iterum no es solo otra aplicación de lista de tareas. Es un sistema de forja pe
 
 ## ✨ Características Principales
 
-- **Arquitectura Local-First:** Inicia sin cuenta usando `localStorage`. Experimenta cero latencia al interactuar y, al registrarte, sincroniza todo transparentemente a la nube.
-- **Sincronización en Tiempo Real:** Integración completa con Supabase (Auth & Database). Tus datos te acompañan en todos tus dispositivos con un modelo de datos robusto y políticas RLS *(Row Level Security)*.
+- **Arquitectura Local-First real:** Puedes abrir ITERUM y usarla inmediatamente sin registrarte. Tareas, hábitos, objetivos y diario quedan guardados en `localStorage`.
+- **Cuenta opcional para sincronizar:** Si decides iniciar sesión, ITERUM conecta con Supabase y migra tu progreso local para que tus datos viajen contigo entre dispositivos.
+- **Sincronización en Tiempo Real:** Integración completa con Supabase (Auth & Database). Tus datos viven en PostgreSQL con políticas RLS *(Row Level Security)*.
 - **Jugo Sensorial (Sensory UX):** La app recompensa cada acción positiva con un motor de feedback propio (sonidos sintetizados vía Web Audio API, animaciones interactivas usando Framer Motion, micro haptics y explosiones de confetti) optimizado para no sumar un solo KB de dependencias innecesarias.
 - **Gestión de Hábitos:** Seguimiento cuantitativo y cualitativo de tus rutinas diarias con sistema de rachas (streaks) y recordatorios predictivos.
 - **Objetivos y Hitos:** Define metas a largo plazo y divídelas en pasos accionables, acumulando progresión de forma gamificada.
@@ -47,8 +48,9 @@ Iterum no es solo otra aplicación de lista de tareas. Es un sistema de forja pe
    npm install
    ```
 
-3. **Configurar el Entorno:**
-   Crea un archivo `.env` en la raíz copiando `.env.example` y añade tus claves de Supabase.
+3. **Configurar el Entorno (opcional):**
+   Si solo quieres usar ITERUM en modo local, puedes saltarte este paso.
+   Si quieres habilitar registro, login y sincronización en la nube, crea un archivo `.env` en la raíz copiando `.env.example` y añade tus claves de Supabase.
    ```bash
    VITE_SUPABASE_URL=tu_supabase_url
    VITE_SUPABASE_ANON_KEY=tu_supabase_anon_key
@@ -58,6 +60,13 @@ Iterum no es solo otra aplicación de lista de tareas. Es un sistema de forja pe
    ```bash
    npm run dev
    ```
+
+## ☁️ Modo Local y Sincronización
+
+- **Sin cuenta:** ITERUM funciona completamente en local y guarda el progreso en el navegador.
+- **Con cuenta:** al iniciar sesión, la app carga tus datos de Supabase y usa sincronización cloud.
+- **Migración local -> nube:** si detecta progreso local al iniciar sesión por primera vez, intenta migrarlo para no perder avances.
+- **Cerrar sesión:** la app sigue siendo usable; vuelves a modo local en vez de quedar bloqueado por autenticación.
 
 ## 🗺️ Roadmap de Evolución
 

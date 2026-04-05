@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from './services/supabase';
 import { Auth } from './components/Auth';
 import { format } from 'date-fns';
-import { Plus } from 'lucide-react';
+import { LogIn, LogOut, Plus } from 'lucide-react';
 import { useTasks } from './hooks/useTasks';
 import { useHabits } from './hooks/useHabits';
 import { useObjectives } from './hooks/useObjectives';
@@ -37,6 +37,7 @@ import { dbService } from './services/dbService';
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [isMigrating, setIsMigrating] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
     if (!supabase) return;
@@ -151,6 +152,12 @@ export default function App() {
       setUserId(null);
     }
   }, [session, setUserId, loadProfile, loadHabits, loadLogs, loadTasks, loadObjectives, isMigrating, setToast]);
+
+  useEffect(() => {
+    if (session?.user) {
+      setIsAuthModalOpen(false);
+    }
+  }, [session]);
 
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isHabitModalOpen, setIsHabitModalOpen] = useState(false);
@@ -338,18 +345,22 @@ export default function App() {
   );
 
   const streak = calculateStreak();
+  const isAuthenticated = Boolean(session?.user);
 
-  if (!session) {
-    return (
-      <div
-        className={cn(
-          'bg-bg-primary text-text-primary min-h-screen font-sans transition-all duration-700 dark:bg-[--dark-bg-primary] dark:text-[--dark-text-primary]',
-        )}
-      >
-        <Auth />
-      </div>
-    );
-  }
+  const handleAuthAction = async () => {
+    if (session?.user) {
+      await supabase?.auth.signOut();
+      setSession(null);
+      setToast({
+        isOpen: true,
+        title: 'Modo local activo',
+        message: 'Puedes seguir usando ITERUM sin cuenta y volver a sincronizar cuando quieras.',
+      });
+      return;
+    }
+
+    setIsAuthModalOpen(true);
+  };
 
   return (
     <div
@@ -379,10 +390,8 @@ export default function App() {
           setSearchQuery={setSearchQuery}
           theme={theme}
           toggleTheme={toggleTheme}
-          onSignOut={async () => {
-            await supabase?.auth.signOut();
-            setSession(null);
-          }}
+          isAuthenticated={isAuthenticated}
+          onAuthAction={handleAuthAction}
           onNewObjective={() => {
             setObjectiveToEdit(undefined);
             setIsObjectiveModalOpen(true);
@@ -393,6 +402,16 @@ export default function App() {
             setIsTaskModalOpen(true);
           }}
         />
+      )}
+
+      {viewMode === 'today' && (
+        <button
+          onClick={handleAuthAction}
+          className="bg-bg-primary/85 border-border-subtle text-text-muted hover:text-accent fixed top-6 right-6 z-30 flex items-center gap-2 rounded-full border px-4 py-2 text-[10px] font-bold tracking-[0.18em] uppercase shadow-lg backdrop-blur-xl transition-all dark:border-[--dark-border-subtle] dark:bg-[--dark-bg-primary]/85 dark:text-[--dark-text-muted]"
+        >
+          {isAuthenticated ? <LogOut className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
+          <span>{isAuthenticated ? 'Salir' : 'Entrar'}</span>
+        </button>
       )}
 
       {/* Main Content */}
@@ -528,6 +547,22 @@ export default function App() {
         title={toast.title}
         message={toast.message}
       />
+
+      {isAuthModalOpen && (
+        <div className="bg-bg-primary/70 fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md dark:bg-[--dark-bg-primary]/80">
+          <Auth
+            onSuccess={() => {
+              setIsAuthModalOpen(false);
+              setToast({
+                isOpen: true,
+                title: 'Sincronización activada',
+                message: 'Tu cuenta ya está conectada. ITERUM empezará a cargar y sincronizar tus datos.',
+              });
+            }}
+            onClose={() => setIsAuthModalOpen(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }

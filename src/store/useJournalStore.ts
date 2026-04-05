@@ -26,7 +26,7 @@ export const useJournalStore = create<JournalState>()(
           set({ isLoading: true, error: null });
           const user = (await supabase?.auth.getUser())?.data.user;
           if (!user) {
-            set({ journals: [], isLoading: false });
+            set({ isLoading: false });
             return;
           }
 
@@ -87,8 +87,6 @@ export const useJournalStore = create<JournalState>()(
       addJournal: async (text: string, objectiveId?: string) => {
         try {
           const user = (await supabase?.auth.getUser())?.data.user;
-          if (!user) throw new Error("Unauthenticated");
-
           const tempId = crypto.randomUUID();
           
           const rawPayload = JSON.stringify({ text, objectiveId: objectiveId || null });
@@ -114,6 +112,10 @@ export const useJournalStore = create<JournalState>()(
             journals: [optimisticEntry, ...state.journals]
           }));
 
+          if (!user) {
+            return;
+          }
+
           const savedEntry = await dbService.createJournal(user.id, { payload: payloadStr });
 
           set((state) => ({
@@ -128,11 +130,14 @@ export const useJournalStore = create<JournalState>()(
       deleteJournal: async (id: string) => {
          try {
            const user = (await supabase?.auth.getUser())?.data.user;
-           if (!user) return;
            
            set(state => ({
              journals: state.journals.filter(j => j.id !== id)
            }));
+
+           if (!user) {
+             return;
+           }
            
            await dbService.deleteJournal(user.id, id);
          } catch (error: any) {

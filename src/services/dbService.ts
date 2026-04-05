@@ -63,26 +63,38 @@ async function syncObjectiveMilestones(
     if (upsertError) throw upsertError;
   }
 
-  // 2. Delete only milestones that are no longer in the incoming array
-  const incomingIds = milestones.map((m) => m.id);
-  const { error: deleteError } = await client
+  const incomingIds = new Set(milestones.map((milestone) => milestone.id));
+  const { data: existingMilestones, error: fetchError } = await client
     .from('milestones')
-    .delete()
+    .select('id')
     .eq('objective_id', objectiveId)
-    .eq('user_id', userId)
-    .not('id', 'in', `(${incomingIds.join(',')})`);
+    .eq('user_id', userId);
+  if (fetchError) throw fetchError;
 
   // If there are no incoming IDs, delete all for this objective
-  if (incomingIds.length === 0) {
+  if (incomingIds.size === 0) {
     const { error: deleteAllError } = await client
       .from('milestones')
       .delete()
       .eq('objective_id', objectiveId)
       .eq('user_id', userId);
     if (deleteAllError) throw deleteAllError;
-  } else if (deleteError) {
-    throw deleteError;
+    return;
   }
+
+  const milestoneIdsToDelete = (existingMilestones ?? [])
+    .map((milestone) => milestone.id as string)
+    .filter((id) => !incomingIds.has(id));
+
+  if (milestoneIdsToDelete.length === 0) return;
+
+  const { error: deleteError } = await client
+    .from('milestones')
+    .delete()
+    .eq('objective_id', objectiveId)
+    .eq('user_id', userId)
+    .in('id', milestoneIdsToDelete);
+  if (deleteError) throw deleteError;
 }
 
 export const dbService = {
@@ -117,7 +129,7 @@ export const dbService = {
   },
 
   // HABITS
-  async getHabits(userId: string) {
+  async getHabits(userId: string): Promise<Habit[]> {
     const client = requireSupabase();
     const { data, error } = await client
       .from('habits')
@@ -125,25 +137,65 @@ export const dbService = {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return data;
+    
+    return (data || []).map((habit) => ({
+      id: habit.id,
+      name: habit.name,
+      description: habit.description || undefined,
+      frequency: habit.frequency,
+      type: habit.type as any,
+      targetValue: habit.target_value,
+      unit: habit.unit || undefined,
+      color: habit.color || undefined,
+      isActive: habit.is_active,
+      createdAt: new Date(habit.created_at),
+    }));
   },
 
   async createHabit(userId: string, habit: Omit<Habit, 'id' | 'createdAt' | 'isActive'> & { isActive?: boolean }) {
     const client = requireSupabase();
+    const payload = {
+      user_id: userId,
+      name: habit.name,
+      description: habit.description,
+      frequency: habit.frequency,
+      type: habit.type,
+      target_value: habit.targetValue,
+      unit: habit.unit,
+      color: habit.color,
+      is_active: habit.isActive ?? true,
+    };
+    
     const { data, error } = await client
       .from('habits')
-      .insert([{ ...habit, user_id: userId, is_active: habit.isActive ?? true }])
+      .insert([payload])
       .select()
       .single();
     if (error) throw error;
-    return data;
+    
+    return {
+      ...habit,
+      id: data.id,
+      isActive: data.is_active,
+      createdAt: new Date(data.created_at),
+    };
   },
 
   async updateHabit(userId: string, habitId: string, updates: Partial<Habit>) {
     const client = requireSupabase();
+    const payload: Record<string, any> = {};
+    if (updates.name !== undefined) payload.name = updates.name;
+    if (updates.description !== undefined) payload.description = updates.description;
+    if (updates.frequency !== undefined) payload.frequency = updates.frequency;
+    if (updates.type !== undefined) payload.type = updates.type;
+    if (updates.targetValue !== undefined) payload.target_value = updates.targetValue;
+    if (updates.unit !== undefined) payload.unit = updates.unit;
+    if (updates.color !== undefined) payload.color = updates.color;
+    if (updates.isActive !== undefined) payload.is_active = updates.isActive;
+
     const { error } = await client
       .from('habits')
-      .update(updates)
+      .update(payload)
       .eq('id', habitId)
       .eq('user_id', userId);
     if (error) throw error;
@@ -160,25 +212,49 @@ export const dbService = {
   },
 
   // HABIT LOGS
-  async getHabitLogs(userId: string) {
+  async getHabitLogs(userId: string): Promise<HabitLog[]> {
     const client = requireSupabase();
     const { data, error } = await client
       .from('habit_logs')
       .select('*')
       .eq('user_id', userId);
     if (error) throw error;
-    return data;
+    
+    return (data || []).map((log) => ({
+      id: log.id,
+      habitId: log.habit_id,
+      date: log.date,
+      completed: log.completed,
+      value: log.value || undefined,
+      note: log.note || undefined,
+      createdAt: new Date(log.created_at),
+    }));
   },
 
   async upsertHabitLog(userId: string, log: Omit<HabitLog, 'id' | 'createdAt'> & { id?: string }) {
     const client = requireSupabase();
+    const payload = {
+      id: log.id,
+      user_id: userId,
+      habit_id: log.habitId,
+      date: log.date,
+      completed: log.completed,
+      value: log.value,
+      note: log.note,
+    };
+    
     const { data, error } = await client
       .from('habit_logs')
-      .upsert({ ...log, user_id: userId })
+      .upsert(payload)
       .select()
       .single();
     if (error) throw error;
-    return data;
+    
+    return {
+      ...log,
+      id: data.id,
+      createdAt: new Date(data.created_at),
+    };
   },
 
   async deleteHabitLog(userId: string, logId: string) {
@@ -192,7 +268,7 @@ export const dbService = {
   },
 
   // TASKS
-  async getTasks(userId: string) {
+  async getTasks(userId: string): Promise<Task[]> {
     const client = requireSupabase();
     const { data, error } = await client
       .from('tasks')
@@ -200,25 +276,62 @@ export const dbService = {
       .eq('user_id', userId)
       .order('date', { ascending: true });
     if (error) throw error;
-    return data;
+    
+    return (data || []).map((task) => ({
+      id: task.id,
+      type: task.type as any,
+      title: task.title,
+      description: task.description || undefined,
+      date: new Date(task.date),
+      completed: task.completed,
+      color: task.color || undefined,
+      createdAt: new Date(task.created_at),
+    }));
   },
 
   async createTask(userId: string, task: Omit<Task, 'id' | 'createdAt'>) {
     const client = requireSupabase();
+    const payload = {
+      user_id: userId,
+      title: task.title,
+      description: task.description,
+      date: task.date.toISOString(),
+      completed: task.completed,
+      priority: (task as any).priority || 'medium',
+      type: task.type,
+      color: task.color,
+      habit_id: (task as any).habitId || null,
+      objective_id: (task as any).objectiveId || null,
+    };
+    
     const { data, error } = await client
       .from('tasks')
-      .insert([{ ...task, user_id: userId }])
+      .insert([payload])
       .select()
       .single();
     if (error) throw error;
-    return data;
+    
+    return {
+      ...task,
+      id: data.id,
+      createdAt: new Date(data.created_at),
+    };
   },
 
   async updateTask(userId: string, taskId: string, updates: Partial<Task>) {
     const client = requireSupabase();
+    const payload: Record<string, any> = {};
+    if (updates.title !== undefined) payload.title = updates.title;
+    if (updates.description !== undefined) payload.description = updates.description;
+    if (updates.date !== undefined) payload.date = updates.date.toISOString();
+    if (updates.completed !== undefined) payload.completed = updates.completed;
+    if (updates.color !== undefined) payload.color = updates.color;
+    if (updates.type !== undefined) payload.type = updates.type;
+    if ((updates as any).priority !== undefined) payload.priority = (updates as any).priority;
+
     const { error } = await client
       .from('tasks')
-      .update(updates)
+      .update(payload)
       .eq('id', taskId)
       .eq('user_id', userId);
     if (error) throw error;
@@ -291,7 +404,12 @@ export const dbService = {
         .single();
       
       if (error) throw error;
-      await syncObjectiveMilestones(userId, data.id, objective.milestones);
+      try {
+        await syncObjectiveMilestones(userId, data.id, objective.milestones);
+      } catch (milestoneError) {
+        await client.from('objectives').delete().eq('id', data.id).eq('user_id', userId);
+        throw milestoneError;
+      }
       return {
         id: data.id,
         user_id: data.user_id,
@@ -333,6 +451,9 @@ export const dbService = {
     if (updates.status !== undefined) payload.is_active = updates.status !== 'archived';
     try {
       if (!navigator.onLine) throw new Error('Failed to fetch');
+      const previousObjective = updates.milestones !== undefined
+        ? await dbService.getObjectiveById(userId, objectiveId)
+        : null;
       const { error } = await client
         .from('objectives')
         .update(payload)
@@ -341,7 +462,34 @@ export const dbService = {
         
       if (error) throw error;
       if (updates.milestones !== undefined) {
-        await syncObjectiveMilestones(userId, objectiveId, updates.milestones);
+        try {
+          await syncObjectiveMilestones(userId, objectiveId, updates.milestones);
+        } catch (milestoneError) {
+          if (previousObjective) {
+            try {
+              const rollbackPayload: Record<string, unknown> = {
+                title: previousObjective.title,
+                description: previousObjective.description,
+                target_value: previousObjective.targetValue,
+                current_value: previousObjective.currentValue,
+                unit: previousObjective.unit,
+                deadline: previousObjective.deadline?.toISOString() ?? null,
+                color: previousObjective.color,
+                linked_habit_id: previousObjective.linkedHabitId ?? null,
+                is_active: previousObjective.status !== 'archived',
+              };
+              await client
+                .from('objectives')
+                .update(rollbackPayload)
+                .eq('id', objectiveId)
+                .eq('user_id', userId);
+              await syncObjectiveMilestones(userId, objectiveId, previousObjective.milestones);
+            } catch (rollbackError) {
+              console.error('Rollback failed after milestone sync error', rollbackError);
+            }
+          }
+          throw milestoneError;
+        }
       }
     } catch (e: any) {
       if (e.message?.includes('Failed to fetch') || !navigator.onLine) {
@@ -372,6 +520,11 @@ export const dbService = {
       }
       throw e;
     }
+  },
+
+  async getObjectiveById(userId: string, objectiveId: string) {
+    const objectives = await this.getObjectives(userId);
+    return objectives.find((objective) => objective.id === objectiveId) ?? null;
   },
 
   // JOURNALS

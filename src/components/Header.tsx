@@ -12,6 +12,7 @@ import {
   Sun,
   Moon,
   LogOut,
+  LogIn,
 } from 'lucide-react';
 import { ViewMode } from '../types';
 import { cn } from '../utils';
@@ -25,7 +26,8 @@ interface HeaderProps {
   toggleTheme: () => void;
   onNewObjective: () => void;
   onCapture: () => void;
-  onSignOut: () => void;
+  isAuthenticated: boolean;
+  onAuthAction: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -37,7 +39,8 @@ export const Header: React.FC<HeaderProps> = ({
   toggleTheme,
   onNewObjective,
   onCapture,
-  onSignOut,
+  isAuthenticated,
+  onAuthAction,
 }) => {
   const navItems: { mode: ViewMode; label: string; icon: any }[] = [
     { mode: 'today', label: 'Hoy', icon: Zap },
@@ -97,11 +100,11 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           <button
-            onClick={onSignOut}
+            onClick={onAuthAction}
             className="text-text-muted hover:text-accent bg-bg-secondary border-border-subtle rounded-[14px] border p-2.5 transition-all dark:border-[--dark-border-subtle] dark:bg-[--dark-bg-secondary]"
-            title="Cerrar Sesión"
+            title={isAuthenticated ? 'Cerrar Sesión' : 'Iniciar Sesión'}
           >
-            <LogOut className="h-5 w-5" />
+            {isAuthenticated ? <LogOut className="h-5 w-5" /> : <LogIn className="h-5 w-5" />}
           </button>
 
           <div className="flex items-center gap-2">
