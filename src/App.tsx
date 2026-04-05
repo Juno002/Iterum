@@ -164,6 +164,7 @@ export default function App() {
   const [isObjectiveModalOpen, setIsObjectiveModalOpen] = useState(false);
   const [isCloseDayModalOpen, setIsCloseDayModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [captureType, setCaptureType] = useState<'task' | 'habit' | 'objective' | 'journal'>('task');
   const [taskToEdit, setTaskToEdit] = useState<Task | undefined>(undefined);
   const [habitToEdit, setHabitToEdit] = useState<Habit | undefined>(undefined);
   const [objectiveToEdit, setObjectiveToEdit] = useState<Objective | undefined>(undefined);
@@ -225,6 +226,7 @@ export default function App() {
 
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
+    setCaptureType('task');
     setTaskToEdit(undefined);
     setIsTaskModalOpen(true);
   };
@@ -398,6 +400,7 @@ export default function App() {
           }}
           onCapture={() => {
             setSelectedDate(new Date());
+            setCaptureType('task');
             setTaskToEdit(undefined);
             setIsTaskModalOpen(true);
           }}
@@ -423,15 +426,38 @@ export default function App() {
           <Atrium 
             tasks={filteredTasks}
             habits={todayHabits}
+            habitLogs={logs}
             streak={calculateStreak()}
+            onOpenHabits={() => setViewMode('habits')}
+            onOpenObjectives={() => setViewMode('objectives')}
+            onOpenJournal={() => setViewMode('journal')}
             onNewTask={() => {
               setSelectedDate(new Date());
+              setCaptureType('task');
+              setTaskToEdit(undefined);
+              setIsTaskModalOpen(true);
+            }}
+            onNewHabit={() => {
+              setSelectedDate(new Date());
+              setCaptureType('habit');
+              setTaskToEdit(undefined);
+              setIsTaskModalOpen(true);
+            }}
+            onNewObjective={() => {
+              setSelectedDate(new Date());
+              setCaptureType('objective');
               setTaskToEdit(undefined);
               setIsTaskModalOpen(true);
             }}
             onTaskSelect={(task) => {
               setTaskToEdit(task);
+              setCaptureType(task.type);
               setIsTaskModalOpen(true);
+            }}
+            onHabitToggle={(id) => toggleHabitLog(id, new Date())}
+            onHabitSelect={(habit) => {
+              setHabitToEdit(habit);
+              setIsHabitModalOpen(true);
             }}
           />
         ) : (
@@ -485,6 +511,8 @@ export default function App() {
                 tasks={tasks}
                 closedDays={closedDays}
                 weeklyInsights={weeklyInsights}
+                isAuthenticated={isAuthenticated}
+                onOpenAuth={() => setIsAuthModalOpen(true)}
               />
             </div>
           </div>
@@ -497,6 +525,7 @@ export default function App() {
         onClose={handleCloseTaskModal}
         onSave={handleSaveTask}
         initialDate={selectedDate}
+        initialType={captureType}
         taskToEdit={taskToEdit}
       />
 
@@ -527,6 +556,7 @@ export default function App() {
           <button
             onClick={() => {
               setSelectedDate(new Date());
+              setCaptureType('task');
               setTaskToEdit(undefined);
               setIsTaskModalOpen(true);
             }}

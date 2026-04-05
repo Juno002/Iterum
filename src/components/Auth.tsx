@@ -99,7 +99,16 @@ export function Auth({ onSuccess, onClose }: AuthProps) {
               {isLogin ? 'Bienvenido a ITERUM' : 'Únete a la Forja'}
             </h2>
             <p className="text-text-muted mt-2 text-sm">
-              {isLogin ? 'Tu progreso te espera.' : 'Comienza tu camino a la maestría.'}
+              {isLogin
+                ? 'Conecta tu cuenta para sincronizar tu progreso entre dispositivos.'
+                : 'Crea una cuenta para guardar tu progreso en la nube cuando quieras.'}
+            </p>
+          </div>
+
+          <div className="bg-accent/5 border-accent/20 mb-8 rounded-[24px] border p-4">
+            <p className="text-text-primary text-xs leading-relaxed dark:text-[--dark-text-primary]">
+              Puedes usar ITERUM sin registrarte. La cuenta es opcional y solo sirve para
+              sincronizar tus datos con la nube.
             </p>
           </div>
 

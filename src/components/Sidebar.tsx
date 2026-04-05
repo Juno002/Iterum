@@ -29,6 +29,8 @@ interface SidebarProps {
   tasks: Task[];
   closedDays: DayClosure[];
   weeklyInsights: WeeklyInsight[];
+  isAuthenticated: boolean;
+  onOpenAuth: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -47,6 +49,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   tasks,
   closedDays,
   weeklyInsights,
+  isAuthenticated,
+  onOpenAuth,
 }) => {
   return (
     <aside className="space-y-8 lg:col-span-4">
@@ -157,6 +161,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <h3 className="text-text-muted mb-4 text-[10px] font-bold tracking-widest uppercase">
           Datos y Respaldo
         </h3>
+        <div className="bg-bg-secondary/70 border-border-subtle mb-4 rounded-[16px] border p-3 dark:border-[--dark-border-subtle] dark:bg-[--dark-bg-secondary]/70">
+          <p className="text-text-muted text-xs leading-relaxed">
+            {isAuthenticated
+              ? 'Tu cuenta está conectada. ITERUM puede sincronizar y restaurar datos desde la nube.'
+              : 'Estás en modo local. Todo se guarda en este navegador hasta que conectes una cuenta.'}
+          </p>
+          {!isAuthenticated && (
+            <button
+              onClick={onOpenAuth}
+              className="text-accent mt-3 text-[10px] font-bold tracking-widest uppercase transition-colors hover:opacity-80"
+            >
+              Conectar cuenta para sincronizar
+            </button>
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => {
@@ -175,7 +194,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
           <button
             onClick={handleSync}
-            disabled={isSyncing || isRestoring}
+            disabled={isSyncing || isRestoring || !isAuthenticated}
             className="border-border-subtle text-text-muted hover:text-accent hover:border-accent/30 flex items-center justify-center gap-2 rounded-[12px] border px-4 py-2 text-[10px] font-bold transition-all dark:border-[--dark-border-subtle]"
           >
             {isSyncing ? (
@@ -187,7 +206,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
           <button
             onClick={handleRestore}
-            disabled={isSyncing || isRestoring}
+            disabled={isSyncing || isRestoring || !isAuthenticated}
             className="border-border-subtle text-text-muted hover:text-accent hover:border-accent/30 col-span-2 flex items-center justify-center gap-2 rounded-[12px] border px-4 py-2 text-[10px] font-bold transition-all dark:border-[--dark-border-subtle]"
           >
             {isRestoring ? (

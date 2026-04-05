@@ -101,7 +101,7 @@ export const useJournalStore = create<JournalState>()(
 
           const optimisticEntry: JournalEntry = {
             id: tempId,
-            user_id: user.id,
+            user_id: user?.id,
             payload: payloadStr,
             created_at: new Date().toISOString(),
             text,

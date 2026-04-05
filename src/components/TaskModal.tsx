@@ -9,6 +9,7 @@ interface TaskModalProps {
   onClose: () => void;
   onSave: (task: Omit<Task, 'id' | 'completed'>) => void;
   initialDate?: Date;
+  initialType?: EntityType;
   taskToEdit?: Task;
 }
 
@@ -40,6 +41,7 @@ export function TaskModal({
   onClose,
   onSave,
   initialDate = new Date(),
+  initialType = 'task',
   taskToEdit,
 }: TaskModalProps) {
   const [title, setTitle] = useState('');
@@ -59,6 +61,8 @@ export function TaskModal({
   const [objTarget, setObjTarget] = useState(100);
   const [objUnit, setObjUnit] = useState('%');
   const [objDeadline, setObjDeadline] = useState('');
+  const isGuidedCapture = !taskToEdit && initialType !== 'task';
+  const activeLabel = ENTITY_TYPES.find((item) => item.type === type)?.label ?? 'Elemento';
 
   useEffect(() => {
     if (isOpen) {
@@ -75,7 +79,7 @@ export function TaskModal({
         setTitle('');
         setDescription('');
         setColor(COLORS[0]);
-        setType('task');
+        setType(initialType);
         setHabitFrequency('daily');
         setHabitType('yesno');
         setHabitTarget(1);
@@ -85,7 +89,7 @@ export function TaskModal({
         setObjDeadline('');
       }
     }
-  }, [isOpen, initialDate, taskToEdit]);
+  }, [isOpen, initialDate, initialType, taskToEdit]);
 
   if (!isOpen) return null;
 
@@ -124,7 +128,7 @@ export function TaskModal({
   return (
     <div className="bg-bg-primary/40 fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md dark:bg-black/60">
       <div
-        className="bg-bg-primary animate-in fade-in zoom-in-95 border-border-subtle w-full max-w-md overflow-hidden rounded-[24px] border shadow-2xl duration-300 dark:border-[--dark-border-subtle] dark:bg-[--dark-bg-primary]"
+        className="bg-bg-primary animate-in fade-in zoom-in-95 border-border-subtle fixed inset-x-0 bottom-0 w-full overflow-hidden rounded-t-[28px] border shadow-2xl duration-300 sm:relative sm:inset-auto sm:max-w-md sm:rounded-[24px] dark:border-[--dark-border-subtle] dark:bg-[--dark-bg-primary]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-border-subtle flex items-center justify-between border-b px-8 py-6 dark:border-[--dark-border-subtle]">
@@ -135,7 +139,7 @@ export function TaskModal({
                   className: 'w-5 h-5 text-accent',
                 })}
             </div>
-            {taskToEdit ? 'Editar' : 'Capturar'} {ENTITY_TYPES.find((t) => t.type === type)?.label}
+            {taskToEdit ? 'Editar' : 'Capturar'} {activeLabel}
           </h2>
           <button
             onClick={onClose}
@@ -147,27 +151,37 @@ export function TaskModal({
 
         <form
           onSubmit={handleSubmit}
-          className="iterum-scrollbar max-h-[75vh] space-y-6 overflow-y-auto p-8"
+          className="iterum-scrollbar max-h-[82vh] space-y-6 overflow-y-auto p-6 sm:max-h-[75vh] sm:p-8"
         >
-          {/* Entity Type Selector */}
-          <div className="grid grid-cols-4 gap-2">
-            {ENTITY_TYPES.map((item) => (
-              <button
-                key={item.type}
-                type="button"
-                onClick={() => setType(item.type)}
-                className={cn(
-                  'flex flex-col items-center gap-2 rounded-[16px] border p-3 transition-all',
-                  type === item.type
-                    ? 'bg-accent/10 border-accent text-accent shadow-sm'
-                    : 'bg-bg-secondary border-border-subtle text-text-muted opacity-60 hover:opacity-100 dark:border-[--dark-border-subtle] dark:bg-[--dark-bg-secondary]',
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                <span className="text-[10px] font-bold tracking-wider uppercase">{item.label}</span>
-              </button>
-            ))}
-          </div>
+          {!isGuidedCapture ? (
+            <div className="grid grid-cols-4 gap-2">
+              {ENTITY_TYPES.map((item) => (
+                <button
+                  key={item.type}
+                  type="button"
+                  onClick={() => setType(item.type)}
+                  className={cn(
+                    'flex flex-col items-center gap-2 rounded-[16px] border p-3 transition-all',
+                    type === item.type
+                      ? 'bg-accent/10 border-accent text-accent shadow-sm'
+                      : 'bg-bg-secondary border-border-subtle text-text-muted opacity-60 hover:opacity-100 dark:border-[--dark-border-subtle] dark:bg-[--dark-bg-secondary]',
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span className="text-[10px] font-bold tracking-wider uppercase">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[18px] border border-accent/20 bg-accent/5 p-4">
+              <p className="text-[10px] font-bold tracking-[0.18em] text-accent uppercase">
+                Captura directa
+              </p>
+              <p className="mt-2 text-sm text-text-primary">
+                Estás creando un {activeLabel.toLowerCase()}. Completa lo esencial y guarda.
+              </p>
+            </div>
+          )}
 
           <div>
             <label
@@ -401,7 +415,8 @@ export function TaskModal({
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="sticky bottom-0 -mx-6 border-t border-border-subtle bg-bg-primary/95 px-6 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur sm:static sm:m-0 sm:border-0 sm:bg-transparent sm:px-0 sm:pb-0">
+            <div className="flex justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
@@ -409,9 +424,10 @@ export function TaskModal({
             >
               Cancelar
             </button>
-            <button type="submit" className="iterum-button-primary">
+            <button type="submit" className="iterum-button-primary min-w-[140px] justify-center">
               {taskToEdit ? 'Guardar Cambios' : 'Capturar'}
             </button>
+            </div>
           </div>
         </form>
       </div>

@@ -5,7 +5,9 @@ import { cn } from '../utils';
 import { parseIntent, ForgingIntent } from '../utils/intentParser';
 import { feedback } from '../utils/feedback';
 import { useTaskStore } from '../store/useTaskStore';
+import { useHabitStore } from '../store/useHabitStore';
 import { useObjectiveStore } from '../store/useObjectiveStore';
+import { useJournalStore } from '../store/useJournalStore';
 
 interface UniversalForgeProps {
   isFabExpanded: boolean;
@@ -20,9 +22,66 @@ export function UniversalForge({ isFabExpanded }: UniversalForgeProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const prevIntentRef = useRef<ForgingIntent>('task');
   const addTask = useTaskStore(state => state.addTask);
+  const addHabit = useHabitStore(state => state.addHabit);
   const addObjective = useObjectiveStore(state => state.addObjective);
+  const addJournal = useJournalStore(state => state.addJournal);
   const parsedIntent = parseIntent(text);
   const intent = parsedIntent.type;
+
+  const resetForge = () => {
+    setIsForging(false);
+    setIsExpanded(false);
+    setText('');
+    setNotes('');
+    setTags('');
+  };
+
+  const submitForge = () => {
+    if (!text.trim()) return;
+
+    const parsed = parseIntent(text);
+    if (!parsed.cleanText) return;
+
+    if (parsed.type === 'task') {
+      feedback.tap();
+      addTask({
+        title: parsed.cleanText,
+        description: notes.trim() + (tags ? ` \nEtiquetas: ${tags}` : ''),
+        date: new Date(),
+        type: 'task'
+      });
+    } else if (parsed.type === 'habit') {
+      feedback.tap();
+      addHabit({
+        name: parsed.cleanText,
+        description: notes.trim() + (tags ? ` \nEtiquetas: ${tags}` : ''),
+        frequency: 'daily',
+        type: 'yesno',
+        color: '#c9935a',
+      });
+    } else if (parsed.type === 'goal') {
+      feedback.success();
+      addObjective({
+        title: parsed.cleanText,
+        description: notes.trim() + (tags ? ` \nEtiquetas: ${tags}` : ''),
+        targetValue: 100,
+        currentValue: 0,
+        unit: '%',
+        color: '#c9935a',
+        status: 'active',
+        progress: 0,
+      });
+    } else if (parsed.type === 'journal') {
+      feedback.undo();
+      void addJournal(
+        [parsed.cleanText, notes.trim(), tags ? `Etiquetas: ${tags}` : '']
+          .filter(Boolean)
+          .join('\n\n'),
+      );
+    }
+
+    resetForge();
+  };
 
   useEffect(() => {
     if (isForging && inputRef.current) {
@@ -61,11 +120,7 @@ export function UniversalForge({ isFabExpanded }: UniversalForgeProps) {
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (e.key === 'Escape') {
-      setIsForging(false);
-      setIsExpanded(false);
-      setText('');
-      setNotes('');
-      setTags('');
+      resetForge();
       // Need a subtle suck-in sound/vibration here
     }
     
@@ -77,45 +132,7 @@ export function UniversalForge({ isFabExpanded }: UniversalForgeProps) {
     }
     
     if (e.key === 'Enter' && !e.shiftKey) {
-      if (!text.trim()) return;
-      
-      const parsed = parseIntent(text);
-      if (!parsed.cleanText) return;
-
-      // Persist based on intent
-      if (parsed.type === 'task') {
-        feedback.tap();
-        addTask({
-          title: parsed.cleanText,
-          description: notes.trim() + (tags ? ` \nEtiquetas: ${tags}` : ''),
-          date: new Date(),
-          type: 'task'
-        });
-      } else if (parsed.type === 'habit') {
-        feedback.tap();
-        console.log("Create Habit:", parsed.cleanText, { notes, tags });
-      } else if (parsed.type === 'goal') {
-        feedback.success();
-        addObjective({
-          title: parsed.cleanText,
-          description: notes.trim() + (tags ? ` \nEtiquetas: ${tags}` : ''),
-          targetValue: 100,
-          currentValue: 0,
-          unit: '%',
-          color: '#c9935a',
-          status: 'active',
-          progress: 0,
-        });
-      } else if (parsed.type === 'journal') {
-        feedback.undo();
-        console.log("Log Reflection:", parsed.cleanText, { notes, tags });
-      }
-
-      setIsForging(false);
-      setIsExpanded(false);
-      setText('');
-      setNotes('');
-      setTags('');
+      submitForge();
     }
   };
 
@@ -132,10 +149,10 @@ export function UniversalForge({ isFabExpanded }: UniversalForgeProps) {
   };
 
   const getPlaceholder = () => {
-    if (intent === 'journal') return "Ecribe en el vacío...";
-    if (intent === 'goal') return "Define tu cúspide...";
-    if (intent === 'habit') return "Define tu disciplina diaria...";
-    return "¿Qué vas a forjar?";
+    if (intent === 'journal') return "Escribe una nota rápida...";
+    if (intent === 'goal') return "Escribe una meta rápida...";
+    if (intent === 'habit') return "Escribe un hábito rápido...";
+    return "Escribe una tarea, * hábito, Meta: objetivo o > diario";
   };
 
   return (
@@ -204,7 +221,7 @@ export function UniversalForge({ isFabExpanded }: UniversalForgeProps) {
                   className="flex items-center gap-2 whitespace-nowrap"
                 >
                   <Plus className="h-5 w-5" />
-                  <span className="font-bold tracking-[0.1em] text-sm uppercase">FORJAR</span>
+                  <span className="font-bold tracking-[0.1em] text-sm uppercase">NUEVO</span>
                 </motion.div>
               ) : (
                 <motion.div
@@ -260,6 +277,26 @@ export function UniversalForge({ isFabExpanded }: UniversalForgeProps) {
                 spellCheck={false}
                 autoComplete="off"
               />
+            </div>
+
+            <div className="mt-1 flex items-center justify-between gap-3 pb-2">
+              <p className="text-[10px] font-bold tracking-[0.14em] text-text-muted uppercase">
+                {intent === 'habit'
+                  ? 'Guardar hábito rápido'
+                  : intent === 'goal'
+                    ? 'Guardar meta rápida'
+                    : intent === 'journal'
+                      ? 'Guardar reflexión'
+                      : 'Guardar tarea rápida'}
+              </p>
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={submitForge}
+                disabled={!text.trim()}
+                className="rounded-full bg-accent px-4 py-2 text-[11px] font-bold tracking-[0.14em] text-bg-primary uppercase transition-all disabled:opacity-40"
+              >
+                Guardar
+              </button>
             </div>
 
             {/* EXPANDED DETAILS PANEL */}

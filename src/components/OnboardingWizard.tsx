@@ -26,7 +26,7 @@ const STEPS: Step[] = [
     id: 0,
     title: 'Bienvenido a Iterum',
     description:
-      'Iterum es tu compañero para cerrar ciclos diarios de forma consciente y construir una vida con propósito.',
+      'Iterum es tu compañero para cerrar ciclos diarios de forma consciente y construir una vida con propósito. Puedes empezar sin cuenta y sincronizar más adelante si quieres.',
     icon: Sparkles,
     color: 'text-accent',
   },
@@ -164,7 +164,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
           <div className="bg-accent/5 border-border-subtle border-t p-6 text-center dark:border-[--dark-border-subtle]">
             <p className="text-accent flex items-center justify-center gap-2 text-xs font-medium">
               <Zap className="h-3 w-3" />
-              ¡Nivel 2 desbloquea colores personalizados para tus hábitos!
+              Puedes empezar en local ahora mismo y conectar Supabase después.
             </p>
           </div>
         )}
