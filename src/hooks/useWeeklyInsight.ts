@@ -30,10 +30,10 @@ export function useWeeklyInsight() {
     }
     setIsGeneratingInsight(true);
     try {
-      const service = new WeeklyInsightService(process.env.GEMINI_API_KEY || '');
+      const service = new WeeklyInsightService(import.meta.env.GEMINI_API_KEY || '');
       const journalReflections = tasks
-        .filter((t) => t.type === 'journal' && t.content)
-        .map((t) => ({ date: format(t.date, 'yyyy-MM-dd'), content: t.content || '' }));
+        .filter((t) => t.type === 'journal' && t.description)
+        .map((t) => ({ date: format(t.date, 'yyyy-MM-dd'), content: t.description || '' }));
 
       const insight = await service.generateWeeklyInsight(
         habits,

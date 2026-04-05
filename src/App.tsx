@@ -206,6 +206,13 @@ export default function App() {
     return objectives.map((obj) => ({
       ...obj,
       currentValue: calculateObjectiveProgress(obj, habits, logs),
+      progress:
+        obj.targetValue > 0
+          ? Math.min(
+              100,
+              Math.round((calculateObjectiveProgress(obj, habits, logs) / obj.targetValue) * 100),
+            )
+          : 0,
     }));
   }, [objectives, habits, logs]);
 
@@ -284,6 +291,8 @@ export default function App() {
         unit: taskData.objectiveData?.unit || '%',
         deadline: taskData.objectiveData?.deadline,
         color: taskData.color,
+        status: 'active',
+        progress: 0,
       });
     } else {
       addTask(taskData);
@@ -298,7 +307,7 @@ export default function App() {
     }
   };
 
-  const handleSaveObjective = (objectiveData: Omit<Objective, 'id' | 'isActive' | 'createdAt'>) => {
+  const handleSaveObjective = (objectiveData: Omit<Objective, 'id' | 'createdAt'>) => {
     if (objectiveToEdit) {
       updateObjective(objectiveToEdit.id, objectiveData);
     } else {
@@ -480,6 +489,7 @@ export default function App() {
       />
 
       <ObjectiveModal
+        key={`${isObjectiveModalOpen ? 'open' : 'closed'}-${objectiveToEdit?.id ?? 'new'}`}
         isOpen={isObjectiveModalOpen}
         onClose={handleCloseObjectiveModal}
         onSave={handleSaveObjective}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Objective } from '../types';
 import { cn } from '../utils';
-import { motion, useAnimationControls } from 'motion/react';
+import { motion } from 'motion/react';
 import { Target } from 'lucide-react';
 
 interface ObjectiveCardProps {
@@ -14,11 +14,12 @@ export const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
   onEdit,
 }) => {
   const isAchieved = objective.status === 'achieved' || objective.progress >= 100;
+  const colorHint = objective.color;
 
   // The base box shadow radiates from the bottom unless achieved, then it surrounds it.
   const dynamicShadow = isAchieved
-    ? `0 0 20px -2px ${objective.color_hint}40, inset 0 0 10px 1px ${objective.color_hint}1a` // Aura perimetral
-    : `0 15px 30px -10px ${objective.color_hint}40`; // Fuego lento inferior
+    ? `0 0 20px -2px ${colorHint}40, inset 0 0 10px 1px ${colorHint}1a`
+    : `0 15px 30px -10px ${colorHint}40`;
 
   return (
     <motion.div
@@ -41,7 +42,7 @@ export const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
           animate={{ opacity: [0.1, 0.3, 0.1] }}
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
           style={{
-            background: `radial-gradient(circle at center bottom, ${objective.color_hint} 0%, transparent 60%)`
+            background: `radial-gradient(circle at center bottom, ${colorHint} 0%, transparent 60%)`
           }}
         />
       )}
@@ -56,7 +57,7 @@ export const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
           }}
           transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
           style={{
-            background: `linear-gradient(45deg, transparent 20%, ${objective.color_hint}20 50%, transparent 80%)`,
+            background: `linear-gradient(45deg, transparent 20%, ${colorHint}20 50%, transparent 80%)`,
             backgroundSize: "200% 200%"
           }}
         />
@@ -73,7 +74,7 @@ export const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
           </h3>
           {objective.description && (
             <p className="text-text-muted line-clamp-2 text-xs font-serif italic mt-2 opacity-60">
-              "{objective.description}"
+              &quot;{objective.description}&quot;
             </p>
           )}
         </div>
@@ -103,7 +104,7 @@ export const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
                   cx="24"
                   cy="24"
                   r="22"
-                  stroke={objective.color_hint}
+                  stroke={colorHint}
                   strokeWidth="1"
                   fill="none"
                   strokeLinecap="round"

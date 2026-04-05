@@ -102,7 +102,7 @@ export const ViewManager: React.FC<ViewManagerProps> = ({
           )}
         </div>
       ) : viewMode === 'journal' ? (
-        <JournalView tasks={tasks} weeklyInsights={weeklyInsights} onEdit={handleEditTask} />
+        <JournalView weeklyInsights={weeklyInsights} />
       ) : viewMode === 'today' ? (
         <div className="space-y-12">
           {todayHabits.length > 0 && (

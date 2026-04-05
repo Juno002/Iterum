@@ -1,6 +1,20 @@
 import { dbService } from './dbService';
 import { HabitLog } from '../types';
 
+/**
+ * Safely coerces a value to a Date or returns undefined.
+ * Handles: Date objects, ISO strings, timestamps, null, undefined.
+ */
+function safeDate(val: unknown): Date | undefined {
+  if (val == null) return undefined;
+  if (val instanceof Date) return isNaN(val.getTime()) ? undefined : val;
+  if (typeof val === 'string' || typeof val === 'number') {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? undefined : d;
+  }
+  return undefined;
+}
+
 export const migrationService = {
   async migrateLocalToCloud(userId: string) {
     console.log('Starting migration for user:', userId);
@@ -50,16 +64,48 @@ export const migrationService = {
       }
     }
 
-    // 4. Migrate Objectives
-    const objectiveStorage = localStorage.getItem('iterum_objectives_storage');
+    // 4. Migrate Objectives (with safe date handling)
+    const objectiveStorage =
+      localStorage.getItem('iterum_objectives_v1') ||
+      localStorage.getItem('iterum_objectives_storage');
     if (objectiveStorage) {
       const { state } = JSON.parse(objectiveStorage);
       if (state.objectives && state.objectives.length > 0) {
         for (const objective of state.objectives) {
-          const { id, createdAt, ...objData } = objective;
-          await dbService.createObjective(userId, objData);
+          // Strip transient/ID fields and sanitize deadline
+          const {
+            id, createdAt, created_at, user_id, progress,
+            ...rest
+          } = objective;
+          const objData = {
+            ...rest,
+            deadline: safeDate(rest.deadline),
+          };
+          try {
+            await dbService.createObjective(userId, objData);
+          } catch (e) {
+            console.warn('Failed to migrate objective:', objective.title, e);
+          }
         }
         console.log('Objectives migrated');
+      }
+    }
+
+    // 5. Migrate Journals
+    const journalStorage = localStorage.getItem('iterum_journals_v1');
+    if (journalStorage) {
+      const { state } = JSON.parse(journalStorage);
+      if (state.journals && state.journals.length > 0) {
+        for (const journal of state.journals) {
+          // Only migrate if it has an encrypted payload
+          if (!journal.payload) continue;
+          try {
+            await dbService.createJournal(userId, { payload: journal.payload });
+          } catch (e) {
+            console.warn('Failed to migrate journal entry:', journal.id, e);
+          }
+        }
+        console.log('Journals migrated');
       }
     }
 

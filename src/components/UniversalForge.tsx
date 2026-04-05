@@ -17,11 +17,12 @@ export function UniversalForge({ isFabExpanded }: UniversalForgeProps) {
   const [notes, setNotes] = useState('');
   const [tags, setTags] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
-  const [intent, setIntent] = useState<ForgingIntent>('task');
   const inputRef = useRef<HTMLInputElement>(null);
   const prevIntentRef = useRef<ForgingIntent>('task');
   const addTask = useTaskStore(state => state.addTask);
   const addObjective = useObjectiveStore(state => state.addObjective);
+  const parsedIntent = parseIntent(text);
+  const intent = parsedIntent.type;
 
   useEffect(() => {
     if (isForging && inputRef.current) {
@@ -30,15 +31,12 @@ export function UniversalForge({ isFabExpanded }: UniversalForgeProps) {
   }, [isForging]);
 
   useEffect(() => {
-    const parsed = parseIntent(text);
-    setIntent(parsed.type);
-    
     // Haptic Tick when Intent changes
-    if (parsed.type !== prevIntentRef.current) {
+    if (parsedIntent.type !== prevIntentRef.current) {
       if ('vibrate' in navigator) {
         navigator.vibrate(10);
       }
-      prevIntentRef.current = parsed.type;
+      prevIntentRef.current = parsedIntent.type;
     }
 
     // Smart Pause: Expand details panel after 1.5s of no typing if we have real content
@@ -49,7 +47,7 @@ export function UniversalForge({ isFabExpanded }: UniversalForgeProps) {
     }, 1500);
 
     return () => clearTimeout(timeout);
-  }, [text, isExpanded]);
+  }, [parsedIntent.type, text, isExpanded]);
 
   const injectPrefix = (prefix: string) => {
     setText(prefix);
@@ -101,9 +99,12 @@ export function UniversalForge({ isFabExpanded }: UniversalForgeProps) {
         addObjective({
           title: parsed.cleanText,
           description: notes.trim() + (tags ? ` \nEtiquetas: ${tags}` : ''),
+          targetValue: 100,
+          currentValue: 0,
+          unit: '%',
+          color: '#c9935a',
           status: 'active',
           progress: 0,
-          color_hint: '#c9935a'
         });
       } else if (parsed.type === 'journal') {
         feedback.undo();

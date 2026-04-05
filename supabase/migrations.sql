@@ -68,9 +68,13 @@ CREATE TABLE IF NOT EXISTS public.objectives (
     unit TEXT DEFAULT '%',
     deadline TIMESTAMP WITH TIME ZONE,
     color TEXT,
+    linked_habit_id UUID REFERENCES public.habits ON DELETE SET NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+ALTER TABLE public.objectives
+    ADD COLUMN IF NOT EXISTS linked_habit_id UUID REFERENCES public.habits ON DELETE SET NULL;
 
 -- 6. MILESTONES
 CREATE TABLE IF NOT EXISTS public.milestones (
@@ -83,6 +87,14 @@ CREATE TABLE IF NOT EXISTS public.milestones (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 7. JOURNALS
+CREATE TABLE IF NOT EXISTS public.journals (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+    payload TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- ROW LEVEL SECURITY (RLS) policies
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -91,32 +103,47 @@ ALTER TABLE public.habit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.objectives ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.milestones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.journals ENABLE ROW LEVEL SECURITY;
 
 -- 7. RLS POLICIES (Users only see their own data)
+-- Idempotent: DROP before CREATE to allow re-execution
 
 -- Profile Policies
+DROP POLICY IF EXISTS "Users can see their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can see their own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- Habits Policies
+DROP POLICY IF EXISTS "Users can manage their own habits" ON public.habits;
 CREATE POLICY "Users can manage their own habits" ON public.habits 
     FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- Habit Logs Policies
+DROP POLICY IF EXISTS "Users can manage their own habit logs" ON public.habit_logs;
 CREATE POLICY "Users can manage their own habit logs" ON public.habit_logs 
     FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- Tasks Policies
+DROP POLICY IF EXISTS "Users can manage their own tasks" ON public.tasks;
 CREATE POLICY "Users can manage their own tasks" ON public.tasks 
     FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- Objectives Policies
+DROP POLICY IF EXISTS "Users can manage their own objectives" ON public.objectives;
 CREATE POLICY "Users can manage their own objectives" ON public.objectives 
     FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- Milestones Policies
+DROP POLICY IF EXISTS "Users can manage their own milestones" ON public.milestones;
 CREATE POLICY "Users can manage their own milestones" ON public.milestones 
+    FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- Journal Policies
+DROP POLICY IF EXISTS "Users can manage their own journals" ON public.journals;
+CREATE POLICY "Users can manage their own journals" ON public.journals
     FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- AUTOMATIC PROFILE CREATION ON SIGNUP
@@ -129,6 +156,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();

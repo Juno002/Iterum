@@ -72,7 +72,7 @@ export function CeremonyChamber() {
     ? activeObjectives.filter(o => o.title.toLowerCase().includes(mentionQuery.query))
     : [];
 
-  const handleSelectMention = (objective: any) => {
+  const handleSelectMention = (objective: { id: string; title: string; color: string }) => {
     if (!mentionQuery) return;
     navigator.vibrate?.(30); // Single sustained soft haptic pulse
     
@@ -87,7 +87,7 @@ export function CeremonyChamber() {
     setLinkedObjective({ 
       id: objective.id, 
       name: objective.title, 
-      color: objective.color_hint, 
+      color: objective.color, 
       word: `${mentionQuery.prefix}${objective.title.replace(/\s+/g, '')}` 
     });
   };
@@ -244,7 +244,7 @@ export function CeremonyChamber() {
                                 className="w-full text-left p-3 hover:bg-white/5 transition-colors flex items-center justify-between"
                               >
                                 <span className="text-white/90 font-sans text-sm">{obj.title}</span>
-                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: obj.color_hint }} />
+                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: obj.color }} />
                               </button>
                             ))}
                           </div>

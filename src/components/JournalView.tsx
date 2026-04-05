@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Task, WeeklyInsight } from '../types';
+import { WeeklyInsight } from '../types';
 import { cn } from '../utils';
 import { Search, Tag, Calendar, BookOpen, ChevronRight } from 'lucide-react';
 
@@ -76,9 +76,9 @@ export function JournalView({
               key={obj.id}
               onClick={() => setSelectedObjId(obj.id)}
               style={{
-                borderColor: selectedObjId === obj.id ? obj.color_hint : 'transparent',
-                backgroundColor: selectedObjId === obj.id ? `${obj.color_hint}15` : undefined,
-                color: selectedObjId === obj.id ? obj.color_hint : undefined
+                borderColor: selectedObjId === obj.id ? obj.color : 'transparent',
+                backgroundColor: selectedObjId === obj.id ? `${obj.color}15` : undefined,
+                color: selectedObjId === obj.id ? obj.color : undefined
               }}
               className={cn(
                 'flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold tracking-widest whitespace-nowrap uppercase transition-all',
@@ -137,7 +137,7 @@ export function JournalView({
 
             {filteredEntries.map((entry) => {
               const linkedObj = entry.objectiveId ? objectives.find(o => o.id === entry.objectiveId) : null;
-              const colorHint = linkedObj ? linkedObj.color_hint : '#555555';
+              const colorHint = linkedObj ? linkedObj.color : '#555555';
               return (
                 <article
                   key={entry.id}

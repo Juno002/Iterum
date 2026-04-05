@@ -9,7 +9,7 @@ import { useHabitStore } from '../store/useHabitStore';
 interface ObjectiveModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (objective: Omit<Objective, 'id' | 'isActive' | 'createdAt'>) => void;
+  onSave: (objective: Omit<Objective, 'id' | 'createdAt'>) => void;
   objectiveToEdit?: Objective;
 }
 
@@ -24,53 +24,23 @@ const COLORS = [
 
 export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit }: ObjectiveModalProps) {
   const habits = useHabitStore((state) => state.habits);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [targetValue, setTargetValue] = useState(100);
-  const [currentValue, setCurrentValue] = useState(0);
-  const [unit, setUnit] = useState('%');
-  const [deadline, setDeadline] = useState('');
-  const [color, setColor] = useState(COLORS[0]);
-  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [title, setTitle] = useState(objectiveToEdit?.title ?? '');
+  const [description, setDescription] = useState(objectiveToEdit?.description ?? '');
+  const [targetValue, setTargetValue] = useState(objectiveToEdit?.targetValue ?? 100);
+  const [currentValue, setCurrentValue] = useState(objectiveToEdit?.currentValue ?? 0);
+  const [unit, setUnit] = useState(objectiveToEdit?.unit ?? '%');
+  const [deadline, setDeadline] = useState(
+    objectiveToEdit?.deadline ? format(objectiveToEdit.deadline, 'yyyy-MM-dd') : '',
+  );
+  const [color, setColor] = useState(objectiveToEdit?.color ?? COLORS[0]);
+  const [milestones, setMilestones] = useState<Milestone[]>(objectiveToEdit?.milestones ?? []);
   const [newMilestoneTitle, setNewMilestoneTitle] = useState('');
-  const [linkedHabitId, setLinkedHabitId] = useState<string | undefined>(undefined);
+  const [linkedHabitId, setLinkedHabitId] = useState<string | undefined>(objectiveToEdit?.linkedHabitId);
 
   const linkedHabits = habits.filter(
     (h) =>
       (objectiveToEdit && h.objectiveIds?.includes(objectiveToEdit.id)) || h.id === linkedHabitId,
   );
-
-  const [prevOpen, setPrevOpen] = useState(isOpen);
-  const [prevEditId, setPrevEditId] = useState<string | undefined>(objectiveToEdit?.id);
-
-  if (isOpen !== prevOpen || objectiveToEdit?.id !== prevEditId) {
-    setPrevOpen(isOpen);
-    setPrevEditId(objectiveToEdit?.id);
-
-    if (isOpen) {
-      if (objectiveToEdit) {
-        setTitle(objectiveToEdit.title);
-        setDescription(objectiveToEdit.description || '');
-        setTargetValue(objectiveToEdit.targetValue);
-        setCurrentValue(objectiveToEdit.currentValue);
-        setUnit(objectiveToEdit.unit);
-        setDeadline(objectiveToEdit.deadline ? format(objectiveToEdit.deadline, 'yyyy-MM-dd') : '');
-        setColor(objectiveToEdit.color || COLORS[0]);
-        setMilestones(objectiveToEdit.milestones || []);
-        setLinkedHabitId(objectiveToEdit.linkedHabitId);
-      } else {
-        setTitle('');
-        setDescription('');
-        setTargetValue(100);
-        setCurrentValue(0);
-        setUnit('%');
-        setDeadline('');
-        setColor(COLORS[0]);
-        setMilestones([]);
-        setLinkedHabitId(undefined);
-      }
-    }
-  }
 
   if (!isOpen) return null;
 
@@ -111,6 +81,8 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit }: Obj
       unit,
       deadline: deadline ? new Date(deadline) : undefined,
       color,
+      status: objectiveToEdit?.status || 'active',
+      progress: targetValue > 0 ? Math.min(100, Math.round((currentValue / targetValue) * 100)) : 0,
       milestones,
       linkedHabitId,
     });

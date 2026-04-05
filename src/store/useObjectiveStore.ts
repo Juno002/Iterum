@@ -10,7 +10,9 @@ interface ObjectiveState {
   isLoading: boolean;
   error: string | null;
   fetchObjectives: () => Promise<void>;
-  addObjective: (objective: Omit<Objective, 'id' | 'user_id' | 'created_at'>) => Promise<void>;
+  loadObjectives: (userId?: string) => Promise<void>;
+  setObjectives: (objectives: Objective[]) => void;
+  addObjective: (objective: Omit<Objective, 'id' | 'user_id' | 'createdAt'>) => Promise<void>;
   updateObjective: (id: string, updates: Partial<Objective>) => Promise<void>;
   deleteObjective: (id: string) => Promise<void>;
 }
@@ -39,7 +41,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
       
       const data = await dbService.getObjectives(user.id);
       const key = await getEncryptionKey();
-      const decryptedData = await Promise.all(data.map(async (obj: Objective) => {
+      const decryptedData = await Promise.all(data.map(async (obj) => {
         let title = obj.title;
         let description = obj.description;
         try {
@@ -52,7 +54,12 @@ export const useObjectiveStore = create<ObjectiveState>()(
             if (parts.length === 2) description = await decryptData(parts[0], parts[1], key);
           }
         } catch(e) { /* silent */ }
-        return { ...obj, title, description };
+        return {
+          ...obj,
+          status: obj.status as Objective['status'],
+          title,
+          description,
+        };
       }));
       
       const { useSyncQueueStore } = await import('./useSyncQueueStore');
@@ -63,7 +70,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
         const localData = state.objectives;
         
         // 1. Empezamos con los datos del servidor
-        const merged = decryptedData.map((serverObj: any) => {
+        const merged = decryptedData.map((serverObj: Objective) => {
            const localObj = localData.find(l => l.id === serverObj.id);
            // Si el objeto está en la cola pendiente de actualización, conservamos el local
            const isUpdating = pendingQueue.some(q => q.action === 'update' && q.entityId === serverObj.id);
@@ -72,7 +79,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
         });
 
         // 2. Filtramos deletes locales
-        const afterDeletes = merged.filter((obj: any) => 
+        const afterDeletes = merged.filter((obj) => 
            !pendingQueue.some(q => q.action === 'delete' && q.entityId === obj.id)
         );
 
@@ -84,11 +91,18 @@ export const useObjectiveStore = create<ObjectiveState>()(
         return { objectives: [...localCreates, ...afterDeletes], isLoading: false };
       });
       
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      set({ error: message, isLoading: false });
       console.error('Error fetching objectives:', error);
     }
   },
+
+  loadObjectives: async () => {
+    await get().fetchObjectives();
+  },
+
+  setObjectives: (objectives) => set({ objectives }),
 
   addObjective: async (objectiveData) => {
     try {
@@ -100,10 +114,13 @@ export const useObjectiveStore = create<ObjectiveState>()(
       const optimisticObjective: Objective = {
         ...objectiveData,
         id: tempId,
+        targetValue: objectiveData.targetValue ?? 100,
+        currentValue: objectiveData.currentValue ?? 0,
+        unit: objectiveData.unit ?? '%',
+        color: objectiveData.color ?? '#c9935a',
         progress: objectiveData.progress ?? 0,
         status: objectiveData.status ?? 'active',
-        color_hint: objectiveData.color_hint ?? '#c9935a',
-        created_at: new Date().toISOString(),
+        createdAt: new Date(),
       };
       
       set((state) => ({
@@ -111,7 +128,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
       }));
 
       // Background Encryption & Sync
-      let payloadToSync = { ...objectiveData };
+      const payloadToSync = { ...objectiveData };
       const key = await getEncryptionKey();
       
       if (key) {
@@ -130,7 +147,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
       set((state) => ({
         objectives: state.objectives.map(obj => obj.id === tempId ? { ...optimisticObjective, id: newObjective.id } : obj)
       }));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating objective:', error);
       get().fetchObjectives(); 
     }
@@ -148,7 +165,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
         )
       }));
 
-      let payloadToSync = { ...updates };
+      const payloadToSync = { ...updates };
       const key = await getEncryptionKey();
       
       if (key && payloadToSync.title) {
@@ -162,7 +179,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
       }
 
       await dbService.updateObjective(user.id, id, payloadToSync);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating objective:', error);
       get().fetchObjectives();
     }
@@ -178,7 +195,7 @@ export const useObjectiveStore = create<ObjectiveState>()(
       }));
 
       await dbService.deleteObjective(user.id, id);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting objective:', error);
       get().fetchObjectives();
     }
@@ -186,6 +203,19 @@ export const useObjectiveStore = create<ObjectiveState>()(
 }),
 {
   name: 'iterum_objectives_v1',
-  storage: createJSONStorage(() => localStorage)
+  storage: createJSONStorage(() => localStorage),
+  onRehydrateStorage: () => (state) => {
+    if (state) {
+      state.objectives = state.objectives.map((objective) => ({
+        ...objective,
+        createdAt: new Date(objective.createdAt),
+        deadline: objective.deadline ? new Date(objective.deadline) : undefined,
+        milestones: objective.milestones?.map((milestone) => ({
+          ...milestone,
+          completedAt: milestone.completedAt ? new Date(milestone.completedAt) : undefined,
+        })),
+      }));
+    }
+  },
 }
 ));

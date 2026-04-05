@@ -41,10 +41,16 @@ export type Objective = {
   user_id?: string;
   title: string;
   description?: string;
+  targetValue: number;
+  currentValue: number;
+  unit: string;
+  deadline?: Date;
+  color: string;
   status: 'active' | 'achieved' | 'archived';
   progress: number;
-  color_hint: string;
-  created_at: string;
+  milestones?: Milestone[];
+  linkedHabitId?: string;
+  createdAt: Date;
 };
 
 export type Task = {
