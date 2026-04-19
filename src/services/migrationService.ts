@@ -1,3 +1,7 @@
+export const migrationService = {
+  async migrateLocalToCloud() {},
+};
+/*
 import { dbService } from './dbService';
 import { HabitLog } from '../types';
 
@@ -120,3 +124,4 @@ export const migrationService = {
     console.log('Migration completed successfully');
   }
 };
+*/

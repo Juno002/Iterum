@@ -4,10 +4,10 @@ import { useUIStore } from '../store/useUIStore';
 import { useObjectiveStore } from '../store/useObjectiveStore';
 import { getDailyPrompt } from '../utils/prompts';
 import { feedback } from '../utils/feedback';
-import { Check, ArrowRight, Target } from 'lucide-react';
+import { ArrowRight, Target } from 'lucide-react';
 import { cn } from '../utils';
 
-import { EnclaveStore, generateRecoveryPhrase, deriveKeyFromPhrase, encryptData } from '../utils/crypto';
+import { EnclaveStore, generateRecoveryPhrase } from '../utils/crypto';
 
 // Util to map text containing @mentions to colored spans in a background div
 function RichTextOverlay({ text, colorHint, linkedWord }: { text: string, colorHint?: string, linkedWord?: string }) {
@@ -106,8 +106,6 @@ export function CeremonyChamber() {
         await EnclaveStore.saveKeyReference(phrase);
         setRecoveryPhraseVisible(phrase);
     }
-    
-    const key = await deriveKeyFromPhrase(phrase);
     
     const { useJournalStore } = await import('../store/useJournalStore');
     await useJournalStore.getState().addJournal(journalText, linkedObjective?.id);

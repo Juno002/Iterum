@@ -1,4 +1,56 @@
 import { create } from 'zustand';
+
+export type SyncTarget = 'task' | 'habit' | 'habit_log' | 'objective' | 'journal';
+export type SyncAction = 'create' | 'update' | 'delete';
+
+export interface SyncOperation {
+  id: string;
+  target: SyncTarget;
+  action: SyncAction;
+  payload: unknown;
+  entityId?: string;
+  retryCount: number;
+  timestamp: number;
+}
+
+interface SyncQueueState {
+  queue: SyncOperation[];
+  isSyncing: boolean;
+  enqueue: (target: SyncTarget, action: SyncAction, payload: unknown, entityId?: string) => void;
+  dequeue: (id: string) => void;
+  flush: () => Promise<void>;
+  clear: () => void;
+}
+
+export const useSyncQueueStore = create<SyncQueueState>((set) => ({
+  queue: [],
+  isSyncing: false,
+  enqueue: (target, action, payload, entityId) =>
+    set((state) => ({
+      queue: [
+        ...state.queue,
+        {
+          id: crypto.randomUUID(),
+          target,
+          action,
+          payload,
+          entityId,
+          retryCount: 0,
+          timestamp: Date.now(),
+        },
+      ],
+    })),
+  dequeue: (id) =>
+    set((state) => ({
+      queue: state.queue.filter((operation) => operation.id !== id),
+    })),
+  flush: async () => {
+    set({ queue: [], isSyncing: false });
+  },
+  clear: () => set({ queue: [] }),
+}));
+/*
+import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { dbService } from '../services/dbService';
 
@@ -113,3 +165,4 @@ export const useSyncQueueStore = create<SyncQueueState>()(
     }
   )
 );
+*/

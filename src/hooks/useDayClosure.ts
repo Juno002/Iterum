@@ -1,4 +1,4 @@
-import { useUserStore } from '../store/useUserStore';
+import { useAppStatsStore } from '../store/useAppStatsStore';
 import { DayClosure, Task, Habit, HabitLog, WeeklyInsight } from '../types';
 import { format, addDays } from 'date-fns';
 
@@ -6,11 +6,10 @@ export function useDayClosure() {
   const {
     closedDays,
     setClosedDays,
-    addClosedDay,
     weeklyInsights,
     setWeeklyInsights,
     addWeeklyInsight: addWeeklyInsightToStore,
-  } = useUserStore();
+  } = useAppStatsStore();
 
   const isDayClosed = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
@@ -39,7 +38,7 @@ export function useDayClosure() {
     logs: HabitLog[],
     tasks: Task[],
     updateTask: (id: string, updates: Partial<Task>) => void,
-    addTask: (task: Omit<Task, 'id' | 'completed'>) => void,
+    _addTask: (task: Omit<Task, 'id' | 'completed'>) => void,
   ) => {
     const dateStr = format(date, 'yyyy-MM-dd');
     if (isDayClosed(date)) return null;

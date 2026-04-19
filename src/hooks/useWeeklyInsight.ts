@@ -4,7 +4,7 @@ import { WeeklyInsightService } from '../services/WeeklyInsightService';
 import { useHabitStore } from '../store/useHabitStore';
 import { useObjectiveStore } from '../store/useObjectiveStore';
 import { useTaskStore } from '../store/useTaskStore';
-import { useUserStore } from '../store/useUserStore';
+import { useAppStatsStore } from '../store/useAppStatsStore';
 import { useUIStore } from '../store/useUIStore';
 import { WeeklyInsight } from '../types';
 
@@ -16,7 +16,7 @@ export function useWeeklyInsight() {
   const { habits, logs } = useHabitStore();
   const { objectives } = useObjectiveStore();
   const { tasks } = useTaskStore();
-  const { addWeeklyInsight } = useUserStore();
+  const { addWeeklyInsight } = useAppStatsStore();
   const { setToast } = useUIStore();
 
   const generateWeeklyInsight = async () => {

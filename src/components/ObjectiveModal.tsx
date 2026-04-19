@@ -27,7 +27,7 @@ export function ObjectiveModal({ isOpen, onClose, onSave, objectiveToEdit }: Obj
   const [title, setTitle] = useState(objectiveToEdit?.title ?? '');
   const [description, setDescription] = useState(objectiveToEdit?.description ?? '');
   const [targetValue, setTargetValue] = useState(objectiveToEdit?.targetValue ?? 100);
-  const [currentValue, setCurrentValue] = useState(objectiveToEdit?.currentValue ?? 0);
+  const currentValue = objectiveToEdit?.currentValue ?? 0;
   const [unit, setUnit] = useState(objectiveToEdit?.unit ?? '%');
   const [deadline, setDeadline] = useState(
     objectiveToEdit?.deadline ? format(objectiveToEdit.deadline, 'yyyy-MM-dd') : '',

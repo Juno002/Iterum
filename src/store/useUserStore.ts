@@ -1,3 +1,5 @@
+export { useAppStatsStore as useUserStore } from './useAppStatsStore';
+/*
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { UserStats, DayClosure, WeeklyInsight } from '../types';
@@ -138,3 +140,4 @@ export const useUserStore = create<UserState>()(
     },
   ),
 );
+*/

@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  type LucideIcon,
   Plus,
   Search,
   Target,
@@ -11,8 +12,6 @@ import {
   Repeat,
   Sun,
   Moon,
-  LogOut,
-  LogIn,
 } from 'lucide-react';
 import { ViewMode } from '../types';
 import { cn } from '../utils';
@@ -26,8 +25,6 @@ interface HeaderProps {
   toggleTheme: () => void;
   onNewObjective: () => void;
   onCapture: () => void;
-  isAuthenticated: boolean;
-  onAuthAction: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -39,10 +36,8 @@ export const Header: React.FC<HeaderProps> = ({
   toggleTheme,
   onNewObjective,
   onCapture,
-  isAuthenticated,
-  onAuthAction,
 }) => {
-  const navItems: { mode: ViewMode; label: string; icon: any }[] = [
+  const navItems: { mode: ViewMode; label: string; icon: LucideIcon }[] = [
     { mode: 'today', label: 'Hoy', icon: Zap },
     { mode: 'habits', label: 'Hábitos', icon: Repeat },
     { mode: 'objectives', label: 'Objetivos', icon: Target },
@@ -98,15 +93,6 @@ export const Header: React.FC<HeaderProps> = ({
           >
             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
-
-          <button
-            onClick={onAuthAction}
-            className="text-text-muted hover:text-accent bg-bg-secondary border-border-subtle rounded-[14px] border p-2.5 transition-all dark:border-[--dark-border-subtle] dark:bg-[--dark-bg-secondary]"
-            title={isAuthenticated ? 'Cerrar Sesión' : 'Iniciar Sesión'}
-          >
-            {isAuthenticated ? <LogOut className="h-5 w-5" /> : <LogIn className="h-5 w-5" />}
-          </button>
-
           <div className="flex items-center gap-2">
             <button
               onClick={onNewObjective}

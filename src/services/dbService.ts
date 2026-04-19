@@ -1,3 +1,5 @@
+export const dbService = {};
+/*
 import { supabase } from './supabase';
 import { Habit, HabitLog, Task, Objective, UserStats, Milestone } from '../types';
 
@@ -583,3 +585,4 @@ export const dbService = {
     }
   }
 };
+*/

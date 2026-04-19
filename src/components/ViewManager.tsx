@@ -6,8 +6,6 @@ import { JournalView } from './JournalView';
 import { ListView } from './ListView';
 import { WeekView } from './WeekView';
 import { CalendarView } from './CalendarView';
-import { Anvil } from 'lucide-react';
-import { useSyncQueueStore } from '../store/useSyncQueueStore';
 interface ViewManagerProps {
   viewMode: ViewMode;
   filteredHabits: Habit[];
@@ -16,13 +14,11 @@ interface ViewManagerProps {
   todayHabits: Habit[];
   habits: Habit[];
   logs: HabitLog[];
-  tasks: Task[];
   weeklyInsights: WeeklyInsight[];
   stats: UserStats;
   toggleHabitLog: (id: string, date: Date, value?: number, note?: string) => void;
   handleEditHabit: (habit: Habit) => void;
   handleEditObjective: (objective: Objective) => void;
-  handleToggleMilestone: (objectiveId: string, milestoneId: string) => void;
   handleEditTask: (task: Task) => void;
   toggleTask: (id: string) => void;
   deleteTask: (id: string) => void;
@@ -37,31 +33,18 @@ export const ViewManager: React.FC<ViewManagerProps> = ({
   todayHabits,
   habits,
   logs,
-  tasks,
   weeklyInsights,
   stats,
   toggleHabitLog,
   handleEditHabit,
   handleEditObjective,
-  handleToggleMilestone,
   handleEditTask,
   toggleTask,
   deleteTask,
   handleDateSelect,
 }) => {
-  const { queue } = useSyncQueueStore();
-  const pendingCount = queue.length;
-
   return (
-    <div className="space-y-12 lg:col-span-8 relative">
-      {/* Indicador de Yunque (Offline/Syncing Queue) */}
-      {pendingCount > 0 && (
-        <div className="absolute -top-8 right-0 flex items-center gap-1.5 text-[#555] opacity-80" title={`${pendingCount} operaciones pendientes de forja`}>
-          <Anvil className="w-[10px] h-[10px]" />
-          <span className="text-[9px] font-mono tracking-widest">{pendingCount}</span>
-        </div>
-      )}
-      
+    <div className="relative space-y-12 lg:col-span-8">
       {viewMode === 'habits' ? (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {filteredHabits.map((habit) => (
@@ -84,7 +67,7 @@ export const ViewManager: React.FC<ViewManagerProps> = ({
         <div className="columns-1 md:columns-2 gap-6 space-y-6">
           {[...filteredObjectives]
             .sort((a, b) => b.progress - a.progress)
-            .map((objective, idx) => (
+            .map((objective) => (
             <div key={objective.id} className="break-inside-avoid">
               <ObjectiveCard
                 objective={objective}

@@ -1,16 +1,14 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import { format } from 'date-fns';
 import { Habit, HabitLog } from '../types';
-import { dbService } from '../services/dbService';
-import { useUserStore } from './useUserStore';
-import { handleSyncError } from '../utils/syncErrors';
+import { iterumStateStorage } from '../core/storage/iterumStorage';
 
 interface HabitState {
   habits: Habit[];
   logs: HabitLog[];
-  loadHabits: (userId: string) => Promise<void>;
-  loadLogs: (userId: string) => Promise<void>;
+  loadHabits: () => Promise<void>;
+  loadLogs: () => Promise<void>;
   addHabit: (habitData: Omit<Habit, 'id' | 'isActive' | 'createdAt'>) => void;
   updateHabit: (id: string, updates: Partial<Habit>) => void;
   deleteHabit: (id: string) => void;
@@ -19,32 +17,29 @@ interface HabitState {
   setLogs: (logs: HabitLog[]) => void;
 }
 
+function reviveHabit(habit: Habit): Habit {
+  return {
+    ...habit,
+    createdAt: new Date(habit.createdAt),
+    archivedAt: habit.archivedAt ? new Date(habit.archivedAt) : undefined,
+  };
+}
+
+function reviveLog(log: HabitLog): HabitLog {
+  return {
+    ...log,
+    createdAt: new Date(log.createdAt),
+  };
+}
+
 export const useHabitStore = create<HabitState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       habits: [],
       logs: [],
-
-      loadHabits: async (userId) => {
-        try {
-          const habits = await dbService.getHabits(userId);
-          set({ habits });
-        } catch (error) {
-          handleSyncError(error, 'habits');
-        }
-      },
-
-      loadLogs: async (userId) => {
-        try {
-          const logs = await dbService.getHabitLogs(userId);
-          set({ logs });
-        } catch (error) {
-          handleSyncError(error, 'habit_logs');
-        }
-      },
-
+      loadHabits: async () => {},
+      loadLogs: async () => {},
       addHabit: (habitData) => {
-        const userId = useUserStore.getState().userId;
         const newHabit: Habit = {
           ...habitData,
           id: crypto.randomUUID(),
@@ -53,58 +48,23 @@ export const useHabitStore = create<HabitState>()(
         };
 
         set((state) => ({ habits: [...state.habits, newHabit] }));
-
-        if (userId) {
-          dbService.createHabit(userId, habitData).catch((e) => handleSyncError(e, 'habits'));
-        }
       },
-
-      updateHabit: (id, updates) => {
-        const userId = useUserStore.getState().userId;
+      updateHabit: (id, updates) =>
         set((state) => ({
-          habits: state.habits.map((h) => (h.id === id ? { ...h, ...updates } : h)),
-        }));
-
-        if (userId) {
-          dbService.updateHabit(userId, id, updates).catch((e) => handleSyncError(e, 'habits'));
-        }
-      },
-
-      deleteHabit: (id) => {
-        const userId = useUserStore.getState().userId;
+          habits: state.habits.map((habit) => (habit.id === id ? { ...habit, ...updates } : habit)),
+        })),
+      deleteHabit: (id) =>
         set((state) => ({
-          habits: state.habits.filter((h) => h.id !== id),
-          logs: state.logs.filter((l) => l.habitId !== id),
-        }));
-
-        if (userId) {
-          dbService.deleteHabit(userId, id).catch((e) => handleSyncError(e, 'habits'));
-        }
-      },
-
+          habits: state.habits.filter((habit) => habit.id !== id),
+          logs: state.logs.filter((log) => log.habitId !== id),
+        })),
       toggleHabitLog: (habitId, date, value, note) => {
-        const userId = useUserStore.getState().userId;
         const dateStr = format(date, 'yyyy-MM-dd');
 
         set((state) => {
-          const existingLog = state.logs.find((l) => l.habitId === habitId && l.date === dateStr);
-          if (existingLog) {
-            if (existingLog.completed && !value && !note) {
-              if (userId) dbService.deleteHabitLog(userId, existingLog.id).catch((e) => handleSyncError(e, 'habit_logs'));
-              return { logs: state.logs.filter((l) => l.id !== existingLog.id) };
-            } else {
-              const updatedLog = {
-                ...existingLog,
-                completed: true,
-                value: value ?? existingLog.value,
-                note: note ?? existingLog.note,
-              };
-              if (userId) dbService.upsertHabitLog(userId, updatedLog).catch((e) => handleSyncError(e, 'habit_logs'));
-              return {
-                logs: state.logs.map((l) => (l.id === existingLog.id ? updatedLog : l)),
-              };
-            }
-          } else {
+          const existingLog = state.logs.find((log) => log.habitId === habitId && log.date === dateStr);
+
+          if (!existingLog) {
             const newLog: HabitLog = {
               id: crypto.randomUUID(),
               habitId,
@@ -114,9 +74,24 @@ export const useHabitStore = create<HabitState>()(
               note,
               createdAt: new Date(),
             };
-            if (userId) dbService.upsertHabitLog(userId, newLog).catch((e) => handleSyncError(e, 'habit_logs'));
+
             return { logs: [...state.logs, newLog] };
           }
+
+          if (existingLog.completed && value === undefined && !note) {
+            return { logs: state.logs.filter((log) => log.id !== existingLog.id) };
+          }
+
+          const updatedLog: HabitLog = {
+            ...existingLog,
+            completed: true,
+            value: value ?? existingLog.value,
+            note: note ?? existingLog.note,
+          };
+
+          return {
+            logs: state.logs.map((log) => (log.id === existingLog.id ? updatedLog : log)),
+          };
         });
       },
       setHabits: (habits) => set({ habits }),
@@ -124,19 +99,11 @@ export const useHabitStore = create<HabitState>()(
     }),
     {
       name: 'iterum_habits_storage',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => iterumStateStorage),
       onRehydrateStorage: () => (state) => {
-        if (state) {
-          state.habits = state.habits.map((h: any) => ({
-            ...h,
-            createdAt: new Date(h.createdAt),
-            archivedAt: h.archivedAt ? new Date(h.archivedAt) : undefined,
-          }));
-          state.logs = state.logs.map((l: any) => ({
-            ...l,
-            createdAt: new Date(l.createdAt),
-          }));
-        }
+        if (!state) return;
+        state.habits = state.habits.map(reviveHabit);
+        state.logs = state.logs.map(reviveLog);
       },
     },
   ),

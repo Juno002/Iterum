@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { format, subDays, eachDayOfInterval, isSameDay, startOfToday } from 'date-fns';
+import { format, subDays, eachDayOfInterval, startOfToday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Habit, HabitLog } from '../types';
 import { cn } from '../utils';

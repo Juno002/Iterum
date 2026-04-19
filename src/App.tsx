@@ -1,3 +1,6 @@
+export { default } from './module/IterumModule';
+export type { IterumModuleProps as AppProps, IterumModuleEvent } from './module/IterumModule';
+/*
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from './services/supabase';
 import { Auth } from './components/Auth';
@@ -602,3 +605,4 @@ export default function App() {
     </div>
   );
 }
+*/

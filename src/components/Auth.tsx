@@ -1,3 +1,12 @@
+export interface AuthProps {
+  onSuccess?: () => void;
+  onClose?: () => void;
+}
+
+export function Auth(_props: AuthProps) {
+  return null;
+}
+/*
 import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
 import { Mail, Lock, User, Github, Chrome, ArrowRight, Loader2, Info, X } from 'lucide-react';
@@ -251,3 +260,4 @@ export function Auth({ onSuccess, onClose }: AuthProps) {
     </div>
   );
 }
+*/

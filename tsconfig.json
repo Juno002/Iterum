@@ -19,5 +19,15 @@
     "noEmit": true
   },
   "include": ["src", "vite.config.ts"],
-  "exclude": ["dist", "public/ITERUM-main", "dist/ITERUM-main", "node_modules"]
+  "exclude": [
+    "dist",
+    "public/ITERUM-main",
+    "dist/ITERUM-main",
+    "node_modules",
+    "src/App.tsx",
+    "src/components/Auth.tsx",
+    "src/services/dbService.ts",
+    "src/services/migrationService.ts",
+    "src/store/useUserStore.ts"
+  ]
 }

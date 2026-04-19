@@ -1,13 +1,11 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import { Task } from '../types';
-import { dbService } from '../services/dbService';
-import { useUserStore } from './useUserStore';
-import { handleSyncError } from '../utils/syncErrors';
+import { iterumStateStorage } from '../core/storage/iterumStorage';
 
 interface TaskState {
   tasks: Task[];
-  loadTasks: (userId: string) => Promise<void>;
+  loadTasks: () => Promise<void>;
   addTask: (task: Omit<Task, 'id' | 'completed' | 'createdAt'>) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
@@ -15,22 +13,20 @@ interface TaskState {
   setTasks: (tasks: Task[]) => void;
 }
 
+function reviveTask(task: Task): Task {
+  return {
+    ...task,
+    date: new Date(task.date),
+    createdAt: new Date(task.createdAt),
+  };
+}
+
 export const useTaskStore = create<TaskState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       tasks: [],
-
-      loadTasks: async (userId) => {
-        try {
-          const tasks = await dbService.getTasks(userId);
-          set({ tasks });
-        } catch (error) {
-          handleSyncError(error, 'tasks');
-        }
-      },
-
+      loadTasks: async () => {},
       addTask: (task) => {
-        const userId = useUserStore.getState().userId;
         const newTask: Task = {
           ...task,
           id: crypto.randomUUID(),
@@ -38,61 +34,31 @@ export const useTaskStore = create<TaskState>()(
           type: task.type || 'task',
           createdAt: new Date(),
         };
+
         set((state) => ({ tasks: [...state.tasks, newTask] }));
-
-        if (userId) {
-          dbService.createTask(userId, newTask).catch((e) => handleSyncError(e, 'tasks'));
-        }
       },
-
-      updateTask: (id, updates) => {
-        const userId = useUserStore.getState().userId;
+      updateTask: (id, updates) =>
         set((state) => ({
-          tasks: state.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t)),
-        }));
-
-        if (userId) {
-          dbService.updateTask(userId, id, updates).catch((e) => handleSyncError(e, 'tasks'));
-        }
-      },
-
-      deleteTask: (id) => {
-        const userId = useUserStore.getState().userId;
+          tasks: state.tasks.map((task) => (task.id === id ? { ...task, ...updates } : task)),
+        })),
+      deleteTask: (id) =>
         set((state) => ({
-          tasks: state.tasks.filter((t) => t.id !== id),
-        }));
-
-        if (userId) {
-          dbService.deleteTask(userId, id).catch((e) => handleSyncError(e, 'tasks'));
-        }
-      },
-
-      toggleTask: (id) => {
-        const userId = useUserStore.getState().userId;
-        set((state) => {
-          const updatedTasks = state.tasks.map((t) => {
-            if (t.id === id) {
-              const updated = { ...t, completed: !t.completed };
-              if (userId) dbService.updateTask(userId, id, { completed: !t.completed }).catch((e) => handleSyncError(e, 'tasks'));
-              return updated;
-            }
-            return t;
-          });
-          return { tasks: updatedTasks };
-        });
-      },
+          tasks: state.tasks.filter((task) => task.id !== id),
+        })),
+      toggleTask: (id) =>
+        set((state) => ({
+          tasks: state.tasks.map((task) =>
+            task.id === id ? { ...task, completed: !task.completed } : task,
+          ),
+        })),
       setTasks: (tasks) => set({ tasks }),
     }),
     {
       name: 'planner_tasks',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => iterumStateStorage),
       onRehydrateStorage: () => (state) => {
-        if (state) {
-          state.tasks = state.tasks.map((t: any) => ({
-            ...t,
-            date: new Date(t.date),
-          }));
-        }
+        if (!state) return;
+        state.tasks = state.tasks.map(reviveTask);
       },
     },
   ),

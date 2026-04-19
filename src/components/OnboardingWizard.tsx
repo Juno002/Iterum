@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
+  type LucideIcon,
   Sparkles,
   Target,
   Repeat,
@@ -9,7 +10,6 @@ import {
   ChevronLeft,
   CheckCircle2,
   Trophy,
-  ArrowRight,
 } from 'lucide-react';
 import { cn } from '../utils';
 
@@ -17,7 +17,7 @@ type Step = {
   id: number;
   title: string;
   description: string;
-  icon: any;
+  icon: LucideIcon;
   color: string;
 };
 
@@ -26,7 +26,7 @@ const STEPS: Step[] = [
     id: 0,
     title: 'Bienvenido a Iterum',
     description:
-      'Iterum es tu compañero para cerrar ciclos diarios de forma consciente y construir una vida con propósito. Puedes empezar sin cuenta y sincronizar más adelante si quieres.',
+      'Iterum es tu compañero para cerrar ciclos diarios de forma consciente y construir una vida con propósito. Todo vive en tu dispositivo y puedes empezar de inmediato.',
     icon: Sparkles,
     color: 'text-accent',
   },
@@ -164,7 +164,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
           <div className="bg-accent/5 border-border-subtle border-t p-6 text-center dark:border-[--dark-border-subtle]">
             <p className="text-accent flex items-center justify-center gap-2 text-xs font-medium">
               <Zap className="h-3 w-3" />
-              Puedes empezar en local ahora mismo y conectar Supabase después.
+              ITERUM funciona 100% local y offline por diseño.
             </p>
           </div>
         )}

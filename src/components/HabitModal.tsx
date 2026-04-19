@@ -1,10 +1,10 @@
 import { useState, useEffect, FormEvent } from 'react';
-import { X, Zap, Repeat, Target, Clock, BookOpen, Sparkles } from 'lucide-react';
+import { X, type LucideIcon, Zap, Target, Clock, Sparkles } from 'lucide-react';
 import { Habit, HabitType } from '../types';
 import { cn } from '../utils';
 import { GoogleGenAI } from '@google/genai';
 import { useObjectiveStore } from '../store/useObjectiveStore';
-import { useUserStore } from '../store/useUserStore';
+import { useAppStatsStore } from '../store/useAppStatsStore';
 
 interface HabitModalProps {
   isOpen: boolean;
@@ -23,7 +23,7 @@ const COLORS = [
   '#64748b', // slate
 ];
 
-const HABIT_TYPES: { type: HabitType; label: string; icon: any }[] = [
+const HABIT_TYPES: { type: HabitType; label: string; icon: LucideIcon }[] = [
   { type: 'yesno', label: 'Sí/No', icon: Zap },
   { type: 'numeric', label: 'Numérico', icon: Target },
   { type: 'timer', label: 'Timer', icon: Clock },
@@ -38,7 +38,7 @@ const FREQUENCIES = [
 
 export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalProps) {
   const objectives = useObjectiveStore((state) => state.objectives);
-  const userLevel = useUserStore((state) => state.stats.level);
+  const userLevel = useAppStatsStore((state) => state.stats.level);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [frequency, setFrequency] = useState('daily');
@@ -76,9 +76,9 @@ export function HabitModal({ isOpen, onClose, onSave, habitToEdit }: HabitModalP
       if (suggestion.type) setType(suggestion.type);
       if (suggestion.unit) setUnit(suggestion.unit);
       if (suggestion.targetValue) setTargetValue(suggestion.targetValue);
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Fallback for network/adblocker errors
-      const errorStr = String(error?.message || error);
+      const errorStr = error instanceof Error ? error.message : String(error);
       if (errorStr.includes('xhr error') || errorStr.includes('fetch')) {
         console.warn('AI Suggestion network error (fallback applied):', errorStr);
         setFrequency('daily');
